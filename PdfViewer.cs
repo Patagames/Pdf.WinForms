@@ -1255,10 +1255,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				bmp.FillRect(0, 0, actualRect.Width, actualRect.Height, PageBackColor);
 
 				//Draw page content to bitmap
-				page.Render(bmp, 0, 0, actualRect.Width, actualRect.Height, page.Rotation, RenderFlags);
+				page.Render(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
 
 				//Draw fillforms to bitmap
-				page.RenderForms(bmp, 0, 0, actualRect.Width, actualRect.Height, page.Rotation, RenderFlags);
+				page.RenderForms(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
 
 				//Draw bitmap to drawing surface
 				graphics.DrawImageUnscaled(bmp.Image, actualRect.X, actualRect.Y);
@@ -1367,7 +1367,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				pagePoint = Document.Pages[i].DeviceToPage(
 					rect.X, rect.Y,
 					rect.Width, rect.Height,
-					PageRotate.Normal, x, y);
+					PageRotation(Document.Pages[i]), x, y);
 
 				return i;
 			}
@@ -1385,7 +1385,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return Document.Pages[pageIndex].PageToDevice(
 					rect.X, rect.Y,
 					rect.Width, rect.Height,
-					PageRotate.Normal, x, y);
+					PageRotation(Document.Pages[pageIndex]), x, y);
+		}
+
+		private PageRotate PageRotation(PdfPage pdfPage)
+		{
+			int rot = pdfPage.Rotation - pdfPage.OriginalRotation;
+			if (rot < 0)
+				rot = 4 + rot;
+			return  (PageRotate)rot;
 		}
 
 		private SelectInfo NormalizeSelectionInfo()
@@ -1765,14 +1773,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Rotates the specified page to the specified angle.
 		/// </summary>
 		/// <param name="pageIndex">Zero-based index of a page for rotation.</param>
-		/// <param name="angel">The angle which must be turned page</param>
+		/// <param name="angle">The angle which must be turned page</param>
 		/// <remarks>The PDF page rotates clockwise. See <see cref="PageRotate"/> for details.</remarks>
-		public void RotatePage(int pageIndex, PageRotate angel)
+		public void RotatePage(int pageIndex, PageRotate angle)
 		{
 			#warning неправильно отрисовывается уже повернутая страница
 			if (Document == null)
 				return;
-			Document.Pages[pageIndex].Rotation = angel;
+			Document.Pages[pageIndex].Rotation = angle;
 			RecalcSize();
 
 		}
