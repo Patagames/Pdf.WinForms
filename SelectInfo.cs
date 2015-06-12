@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-
 namespace Patagames.Pdf.Net.Controls.WinForms
 {
 	/// <summary>

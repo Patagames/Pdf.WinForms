@@ -23,6 +23,6 @@
 		/// <summary>
 		/// The page is scaled with specified coefficient.
 		/// </summary>
-		Zoom,
+		Zoom
 	}
 }
