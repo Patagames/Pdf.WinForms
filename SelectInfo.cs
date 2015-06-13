@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-namespace Patagames.Pdf.Net.Controls.WinForms
+﻿namespace Patagames.Pdf.Net.Controls.WinForms
 {
 	/// <summary>
 	/// Represents the information about the selected text in the control
