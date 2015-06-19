@@ -800,7 +800,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <summary>
 		/// Gets information about highlighted text in a PdfView control
 		/// </summary>
-		public SortedDictionary<int, List<HighlightInfo>> HighlightedTextInfo { get { return _highlightedText } }
+		public SortedDictionary<int, List<HighlightInfo>> HighlightedTextInfo { get { return _highlightedText; } }
 		#endregion
 
 		#region Constructors and initialization
