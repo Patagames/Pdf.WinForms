@@ -17,6 +17,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 	{
 		#region Private fields
 		private SelectInfo _selectInfo = new SelectInfo() { StartPage = -1 };
+		private SortedDictionary<int, List<HighlightInfo>> _highlightedText = new SortedDictionary<int, List<HighlightInfo>>();
 		private bool _mousePressed = false;
 		private bool _mousePressedInLink = false;
 		private int _onstartPageIndex = 0;
@@ -157,6 +158,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		public event EventHandler TilesCountChanged;
 
+		/// <summary>
+		/// Occurs when the text highlighting changed
+		/// </summary>
+		public event EventHandler HighlightedTextChanged;
 
 		#endregion
 
@@ -369,6 +374,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			if (TilesCountChanged != null)
 				TilesCountChanged(this, e);
+		}
+
+		/// <summary>
+		/// Raises the <see cref="HighlightedTextChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		protected virtual void OnHighlightedTextChanged(EventArgs e)
+		{
+			if (HighlightedTextChanged != null)
+				HighlightedTextChanged(this, e);
 		}
 		#endregion
 
@@ -781,6 +796,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				}
 			}
 		}
+
+		/// <summary>
+		/// Gets information about highlighted text in a PdfView control
+		/// </summary>
+		public SortedDictionary<int, List<HighlightInfo>> HighlightedTextInfo { get { return _highlightedText } }
 		#endregion
 
 		#region Constructors and initialization
@@ -927,6 +947,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					DrawPage(e.Graphics, Document.Pages[i], actualRect);
 					//Draw fillforms selection
 					DrawFillFormsSelection(e.Graphics);
+					//Draw text highlight
+					DrawTextHighlight(e.Graphics, i);
 					//Draw text selectionn
 					DrawTextSelection(e.Graphics, selTmp, i);
 					//Draw current page highlight
@@ -943,6 +965,25 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 			base.OnPaint(e);
 
+
+		}
+
+		private void DrawTextHighlight(Graphics graphics, int pageIndex)
+		{
+			if (!_highlightedText.ContainsKey(pageIndex))
+				return;
+
+			var entries = _highlightedText[pageIndex];
+			foreach(var e in entries)
+			{
+				var textInfo = Document.Pages[pageIndex].Text.GetTextInfo(e.CharIndex, e.CharsCount);
+				foreach(var rc in textInfo.Rects)
+				{
+					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
+					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
+					graphics.FillRectangle(e.Brush, new Rectangle(pt1.X, pt1.Y, pt2.X - pt1.X, pt2.Y - pt1.Y));
+				}
+			}
 
 		}
 
@@ -1538,6 +1579,56 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				Document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
 			}
 		}
+
+		private bool CalcIntersectEntries(HighlightInfo existEntry, HighlightInfo addingEntry, out List<HighlightInfo> calcEntries)
+		{
+			calcEntries = new List<HighlightInfo>();
+			int eStart = existEntry.CharIndex;
+			int eEnd = existEntry.CharIndex + existEntry.CharsCount - 1;
+			int aStart = addingEntry.CharIndex;
+			int aEnd = addingEntry.CharIndex + addingEntry.CharsCount - 1;
+
+			if (eStart < aStart && eEnd >= aStart && eEnd <= aEnd)
+			{
+				calcEntries.Add(new HighlightInfo()
+				{
+					CharIndex = eStart,
+					CharsCount = aStart - eStart,
+					Color = existEntry.Color
+				});
+				return true;
+			}
+			else if (eStart >= aStart && eStart <= aEnd && eEnd > aEnd)
+			{
+				calcEntries.Add(new HighlightInfo()
+				{
+					CharIndex = aEnd + 1,
+					CharsCount = eEnd - aEnd,
+					Color = existEntry.Color
+				});
+				return true;
+			}
+			else if (eStart >= aStart && eEnd <= aEnd)
+				return true;
+			else if (eStart < aStart && eEnd > aEnd)
+			{
+				calcEntries.Add(new HighlightInfo()
+				{
+					CharIndex = eStart,
+					CharsCount = aStart - eStart,
+					Color = existEntry.Color
+				});
+				calcEntries.Add(new HighlightInfo()
+				{
+					CharIndex = aEnd + 1,
+					CharsCount = eEnd - aEnd,
+					Color = existEntry.Color
+				});
+				return true;
+			}
+			//no intersection
+			return false;
+		}
 		#endregion
 
 		#region FillForms event handlers
@@ -1870,6 +1961,117 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 			return -1;
 		}
+
+		/// <summary>
+		/// Highlight text on the page
+		/// </summary>
+		/// <param name="pageIndex">Zero-based index of the page</param>
+		/// <param name="highlightInfo">Sets the options for highlighting text</param>
+		public void HighlightText(int pageIndex, HighlightInfo highlightInfo)
+		{
+			HighlightText(pageIndex, highlightInfo.CharIndex, highlightInfo.CharsCount, highlightInfo.Color);
+		}
+
+		/// <summary>
+		/// Highlight text on the page
+		/// </summary>
+		/// <param name="pageIndex">Zero-based index of the page</param>
+		/// <param name="charIndex">Zero-based char index on the page.</param>
+		/// <param name="charsCount">The number of highlighted characters on the page or -1 for highlight text from charIndex to end of the page.</param>
+		/// <param name="color">Highlight color</param>
+		public void HighlightText(int pageIndex, int charIndex, int charsCount, Color color)
+		{
+			//normalize all user input
+			if (pageIndex < 0)
+				pageIndex = 0;
+			if (pageIndex > Document.Pages.Count - 1)
+				pageIndex = Document.Pages.Count - 1;
+
+			int charsCnt = Document.Pages[pageIndex].Text.CountChars;
+			if (charIndex < 0)
+				charIndex = 0;
+			if (charIndex > charsCnt - 1)
+				charIndex = charsCnt - 1;
+			if (charsCount < 0)
+				charsCount = charsCnt - charIndex;
+			if (charIndex + charsCount > charsCnt - 1)
+				charsCount = charsCnt - 1 - charIndex;
+			if (charsCount <= 0)
+				return;
+
+			var newEntry = new HighlightInfo() { CharIndex = charIndex, CharsCount = charsCount, Color = color };
+
+			if (!_highlightedText.ContainsKey(pageIndex))
+			{
+				if (color != Color.Empty)
+				{
+					_highlightedText.Add(pageIndex, new List<HighlightInfo>());
+					_highlightedText[pageIndex].Add(newEntry);
+				}
+			}
+			else
+			{
+				var entries = _highlightedText[pageIndex];
+				//Analize exists entries and remove overlapped and trancate intersecting entries
+				for (int i = entries.Count - 1; i >= 0; i--)
+				{
+					List<HighlightInfo> calcEntries;
+					if (CalcIntersectEntries(entries[i], newEntry, out calcEntries))
+					{
+						if (calcEntries.Count == 0)
+							entries.RemoveAt(i);
+						else
+							for (int j = 0; j < calcEntries.Count; j++)
+								if (j == 0)
+									entries[i] = calcEntries[j];
+								else
+									entries.Insert(i, calcEntries[j]);
+					}
+				}
+				if (color != Color.Empty)
+					entries.Add(newEntry);
+			}
+
+			Invalidate();
+			OnHighlightedTextChanged(EventArgs.Empty);
+		}
+
+		/// <summary>
+		/// Removes highlight from the text
+		/// </summary>
+		/// <param name="pageIndex">Zero-based index of the page</param>
+		/// <param name="charIndex">Zero-based char index on the page.</param>
+		/// <param name="charsCount">The number of highlighted characters on the page or -1 for highlight text from charIndex to end of the page.</param>
+		public void RemoveHighlightFromText(int pageIndex, int charIndex, int charsCount)
+		{
+			HighlightText(pageIndex, charIndex, charsCount, Color.Empty);
+		}
+
+		/// <summary>
+		/// Highlight selected text on the page by specified color
+		/// </summary>
+		/// <param name="color">Highlight color</param>
+		public void HilightSelectedText(Color color)
+		{
+			var selInfo = SelectInfo;
+			if (selInfo.StartPage < 0 || selInfo.StartIndex < 0)
+				return;
+
+			for (int i = selInfo.StartPage; i <= selInfo.EndPage; i++)
+			{
+				int start = (i == selInfo.StartPage ? selInfo.StartIndex : 0);
+				int len = (i == selInfo.EndPage ? selInfo.EndIndex - start : -1);
+				HighlightText(i, start, len, color);
+			}
+		}
+
+		/// <summary>
+		/// Removes highlight from selected text
+		/// </summary>
+		public void RemoveHilightFromSelectedText()
+		{
+			HilightSelectedText(Color.Empty);
+		}
 		#endregion
 
 		#region Miscellaneous event handlers
@@ -1879,9 +2081,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			Invalidate();
 		}
 		#endregion
-
-
-
 
 
 	}
