@@ -26,11 +26,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private Pen _pageBorderColorPen;
 		private Brush _selectColorBrush;
 		private Pen _pageSeparatorColorPen;
-		private Pen _currentPageHilightColorPen;
+		private Pen _currentPageHighlightColorPen;
 
 		private PdfDocument _document;
 		private SizeModes _sizeMode = SizeModes.FitToWidth;
-		private Color _formHilightColor;
+		private Color _formHighlightColor;
 		private Color _pageBackColor;
 		private Color _pageBorderColor;
 		private Color _textSelectColor;
@@ -39,8 +39,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private ViewModes _viewMode;
 		private Color _pageSeparatorColor;
 		private bool _showPageSeparator;
-		private Color _currentPageHilightColor;
-		private bool _showCurrentPageHilight;
+		private Color _currentPageHighlightColor;
+		private bool _showCurrentPageHighlight;
 		private ContentAlignment _pageAlign;
 		private RenderFlags _renderFlags;
 		private int _tilesCount;
@@ -88,9 +88,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public event EventHandler TextSelectColorChanged;
 
 		/// <summary>
-		/// Event raised when the value of the <see cref="FormHilightColor"/> property is changed on Control.
+		/// Event raised when the value of the <see cref="FormHighlightColor"/> property is changed on Control.
 		/// </summary>
-		public event EventHandler FormHilightColorChanged;
+		public event EventHandler FormHighlightColorChanged;
 
 		/// <summary>
 		/// Occurs when the <see cref="Zoom"/> property has changed.
@@ -123,14 +123,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public event EventHandler CurrentPageChanged;
 
 		/// <summary>
-		/// Occurs when the <see cref="CurrentPageHilightColor"/> property has changed.
+		/// Occurs when the <see cref="CurrentPageHighlightColor"/> property has changed.
 		/// </summary>
-		public event EventHandler CurrentPageHilightColorChanged;
+		public event EventHandler CurrentPageHighlightColorChanged;
 
 		/// <summary>
-		/// Occurs when the <see cref="ShowCurrentPageHilight"/> property has changed.
+		/// Occurs when the <see cref="ShowCurrentPageHighlight"/> property has changed.
 		/// </summary>
-		public event EventHandler ShowCurrentPageHilightChanged;
+		public event EventHandler ShowCurrentPageHighlightChanged;
 
 		/// <summary>
 		/// Occurs when the value of the <see cref="PageAlign"/> property has changed.
@@ -232,13 +232,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
-		/// Raises the <see cref="FormHilightColorChanged"/> event.
+		/// Raises the <see cref="FormHighlightColorChanged"/> event.
 		/// </summary>
 		/// <param name="e">An System.EventArgs that contains the event data.</param>
-		protected virtual void OnFormHilightColorChanged(EventArgs e)
+		protected virtual void OnFormHighlightColorChanged(EventArgs e)
 		{
-			if (FormHilightColorChanged != null)
-				FormHilightColorChanged(this, e);
+			if (FormHighlightColorChanged != null)
+				FormHighlightColorChanged(this, e);
 		}
 
 		/// <summary>
@@ -302,23 +302,23 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
-		/// Raises the <see cref="CurrentPageHilightColorChanged"/> event.
+		/// Raises the <see cref="CurrentPageHighlightColorChanged"/> event.
 		/// </summary>
 		/// <param name="e">An System.EventArgs that contains the event data.</param>
-		protected virtual void OnCurrentPageHilightColorChanged(EventArgs e)
+		protected virtual void OnCurrentPageHighlightColorChanged(EventArgs e)
 		{
-			if (CurrentPageHilightColorChanged != null)
-				CurrentPageHilightColorChanged(this, e);
+			if (CurrentPageHighlightColorChanged != null)
+				CurrentPageHighlightColorChanged(this, e);
 		}
 
 		/// <summary>
-		/// Raises the <see cref="ShowCurrentPageHilightChanged"/> event.
+		/// Raises the <see cref="ShowCurrentPageHighlightChanged"/> event.
 		/// </summary>
 		/// <param name="e">An System.EventArgs that contains the event data.</param>
-		protected virtual void OnShowCurrentPageHilightChanged(EventArgs e)
+		protected virtual void OnShowCurrentPageHighlightChanged(EventArgs e)
 		{
-			if (ShowCurrentPageHilightChanged != null)
-				ShowCurrentPageHilightChanged(this, e);
+			if (ShowCurrentPageHighlightChanged != null)
+				ShowCurrentPageHighlightChanged(this, e);
 		}
 
 		/// <summary>
@@ -509,20 +509,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <summary>
 		/// Gets or set the highlight color of the form fields in the document.
 		/// </summary>
-		public Color FormHilightColor
+		public Color FormHighlightColor
 		{
 			get
 			{
-				return _formHilightColor;
+				return _formHighlightColor;
 			}
 			set
 			{
-				if (_formHilightColor != value)
+				if (_formHighlightColor != value)
 				{
-					_formHilightColor = value;
+					_formHighlightColor = value;
 					if (Document != null && Document.FormFill != null)
-						Document.FormFill.SetHilightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHilightColor);
-					OnFormHilightColorChanged(EventArgs.Empty);
+						Document.FormFill.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
+					OnFormHighlightColorChanged(EventArgs.Empty);
 				}
 			}
 		}
@@ -651,43 +651,43 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
-		/// Gets or sets the current page hilight color.
+		/// Gets or sets the current page highlight color.
 		/// </summary>
-		public Color CurrentPageHilightColor
+		public Color CurrentPageHighlightColor
 		{
 			get
 			{
-				return _currentPageHilightColor;
+				return _currentPageHighlightColor;
 			}
 			set
 			{
-				if (_currentPageHilightColor != value)
+				if (_currentPageHighlightColor != value)
 				{
-					_currentPageHilightColor = value;
-					if (_currentPageHilightColorPen != null)
-						_currentPageHilightColorPen.Dispose();
-					_currentPageHilightColorPen = new Pen(_currentPageHilightColor, 4);
-					OnCurrentPageHilightColorChanged(EventArgs.Empty);
+					_currentPageHighlightColor = value;
+					if (_currentPageHighlightColorPen != null)
+						_currentPageHighlightColorPen.Dispose();
+					_currentPageHighlightColorPen = new Pen(_currentPageHighlightColor, 4);
+					OnCurrentPageHighlightColorChanged(EventArgs.Empty);
 				}
 			}
 		}
 
 		/// <summary>
-		/// Determines whether the current page's hilight is visible or hidden.
+		/// Determines whether the current page's highlight is visible or hidden.
 		/// </summary>
-		public bool ShowCurrentPageHilight
+		public bool ShowCurrentPageHighlight
 		{
 			get
 			{
-				return _showCurrentPageHilight;
+				return _showCurrentPageHighlight;
 			}
 			set
 			{
-				if (_showCurrentPageHilight != value)
+				if (_showCurrentPageHighlight != value)
 				{
-					_showCurrentPageHilight = value;
+					_showCurrentPageHighlight = value;
 					Invalidate();
-					OnShowCurrentPageHilightChanged(EventArgs.Empty);
+					OnShowCurrentPageHighlightChanged(EventArgs.Empty);
 				}
 			}
 		}
@@ -792,15 +792,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			BackColor = SystemColors.ControlDark;
 			PageBackColor = Color.White;
 			PageBorderColor = Color.Black;
-			FormHilightColor = Color.Transparent;
+			FormHighlightColor = Color.Transparent;
 			TextSelectColor = Color.FromArgb(70, Color.SteelBlue.R, Color.SteelBlue.G, Color.SteelBlue.B);
 			Zoom = 1;
 			PageMargin = new System.Windows.Forms.Padding(10);
 			ViewMode = ViewModes.Vertical;
 			ShowPageSeparator = true;
 			PageSeparatorColor = Color.Gray;
-			CurrentPageHilightColor = Color.FromArgb(170, Color.SteelBlue.R, Color.SteelBlue.G, Color.SteelBlue.B);
-			ShowCurrentPageHilight = true;
+			CurrentPageHighlightColor = Color.FromArgb(170, Color.SteelBlue.R, Color.SteelBlue.G, Color.SteelBlue.B);
+			ShowCurrentPageHighlight = true;
 			PageAlign = ContentAlignment.MiddleCenter;
 			RenderFlags = Enums.RenderFlags.FPDF_ANNOT;
 			TilesCount = 2;
@@ -809,7 +809,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			DoubleBuffered = true;
 
 			_fillForms = new PdfForms();
-			_fillForms.SetHilightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHilightColor);
+			_fillForms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
 			_fillForms.AppAlert += _forms_AppAlert;
 			_fillForms.AppBeep += _forms_AppBeep;
 			_fillForms.AppResponse += _forms_AppResponse;
@@ -929,7 +929,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					DrawFillFormsSelection(e.Graphics);
 					//Draw text selectionn
 					DrawTextSelection(e.Graphics, selTmp, i);
-					//Draw current page hilight
+					//Draw current page highlight
 					DrawCurrentPage(e.Graphics, i, actualRect);
 					//Calc coordinates for page separator
 					CalcPageSeparator(actualRect, i, ref separator);
@@ -1175,7 +1175,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				actualPageRect.Inflate(0, 0);
 				var sm = graphics.SmoothingMode;
 				graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-				graphics.DrawRectangle(_currentPageHilightColorPen, actualPageRect);
+				graphics.DrawRectangle(_currentPageHighlightColorPen, actualPageRect);
 				graphics.SmoothingMode = sm;
 			}
 		}
@@ -1777,7 +1777,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <remarks>The PDF page rotates clockwise. See <see cref="PageRotate"/> for details.</remarks>
 		public void RotatePage(int pageIndex, PageRotate angle)
 		{
-			#warning неправильно отрисовывается уже повернутая страница
 			if (Document == null)
 				return;
 			Document.Pages[pageIndex].Rotation = angle;
