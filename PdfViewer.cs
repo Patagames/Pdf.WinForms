@@ -163,6 +163,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		public event EventHandler HighlightedTextChanged;
 
+		/// <summary>
+		/// Occurs when the value of the <see cref="BookmarksViewer"/> property has changed.
+		/// </summary>
+		public event EventHandler BookmarksViewerChanged;
+
+		/// <summary>
+		/// Occurs when the value of the <see cref="NamedDestinationsViewer"/> property has changed.
+		/// </summary>
+		public event EventHandler NamedDestinationsViewerChanged;
+
 		#endregion
 
 		#region Event raises
@@ -385,6 +395,27 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (HighlightedTextChanged != null)
 				HighlightedTextChanged(this, e);
 		}
+
+		/// <summary>
+		/// Raises the <see cref="BookmarksViewerChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		protected virtual void OnBookmarksViewerChanged(EventArgs e)
+		{
+			if (BookmarksViewerChanged != null)
+				BookmarksViewerChanged(this, e);
+		}
+
+		/// <summary>
+		/// Raises the <see cref="NamedDestinationsViewerChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		protected virtual void OnNamedDestinationsViewerChanged(EventArgs e)
+		{
+			if (NamedDestinationsViewerChanged != null)
+				NamedDestinationsViewerChanged(this, e);
+		}
+
 		#endregion
 
 		#region Public properties
@@ -411,6 +442,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 						_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
 						SetCurrentPage(_onstartPageIndex);
 						ScrollToPage(_onstartPageIndex);
+						SetupControls();
 						OnDocumentLoaded(EventArgs.Empty);
 					}
 				}
@@ -801,6 +833,381 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Gets information about highlighted text in a PdfView control
 		/// </summary>
 		public SortedDictionary<int, List<HighlightInfo>> HighlightedTextInfo { get { return _highlightedText; } }
+
+		/// <summary>
+		/// Gets or sets the <see cref="BookmarksViewer"/> control associated with current PdfViewer control
+		/// </summary>
+		public BookmarksViewer BookmarksViewer
+		{
+			get
+			{
+				return _bookmarksViewer;
+			}
+			set
+			{
+				if (_bookmarksViewer != value)
+				{
+					UnsubscribeBookmarksEvent();
+
+					_bookmarksViewer = value;
+					if (_bookmarksViewer != null)
+						_bookmarksViewer.Document = Document;
+
+					SubscribeBookmarksEvent();
+
+					OnBookmarksViewerChanged(EventArgs.Empty);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Gets or sets the <see cref="NamedDestinationsViewer"/> control associated with current PdfViewer control
+		/// </summary>
+		public NamedDestinationsViewer NamedDestinationsViewer
+		{
+			get
+			{
+				return _namedDestinationsViewer;
+			}
+			set
+			{
+				if (_namedDestinationsViewer != value)
+				{
+					UnsubscribeNamedDestinationsEvent();
+
+					_namedDestinationsViewer = value;
+					if (_namedDestinationsViewer != null)
+						_namedDestinationsViewer.Document = Document;
+
+					SubscribeNamedDestinationsEvent();
+
+					OnNamedDestinationsViewerChanged(EventArgs.Empty);
+				}
+			}
+		}
+		#endregion
+
+		#region Public methods
+		/// <summary>
+		/// Scrolls the control view to the specified page.
+		/// </summary>
+		/// <param name="index">Zero-based index of a page.</param>
+		public void ScrollToPage(int index)
+		{
+			if (Document == null)
+				return;
+			if (ViewMode == ViewModes.SinglePage)
+			{
+				SetCurrentPage(index);
+			}
+			else
+			{
+				var rect = RFTR(renderRects(index));
+				AutoScrollPosition = new Point(rect.X, rect.Y);
+			}
+		}
+
+		/// <summary>
+		/// Rotates the specified page to the specified angle.
+		/// </summary>
+		/// <param name="pageIndex">Zero-based index of a page for rotation.</param>
+		/// <param name="angle">The angle which must be turned page</param>
+		/// <remarks>The PDF page rotates clockwise. See <see cref="PageRotate"/> for details.</remarks>
+		public void RotatePage(int pageIndex, PageRotate angle)
+		{
+			if (Document == null)
+				return;
+			Document.Pages[pageIndex].Rotation = angle;
+			RecalcSize();
+
+		}
+
+		/// <summary>
+		/// Selects the text contained in specified pages.
+		/// </summary>
+		/// <param name="SelInfo"><see cref="SelectInfo"/> structure that describe text selection parameters.</param>
+		public void SelectText(SelectInfo SelInfo)
+		{
+			SelectText(SelInfo.StartPage, SelInfo.StartIndex, SelInfo.EndPage, SelInfo.EndIndex);
+		}
+
+		/// <summary>
+		/// Selects the text contained in specified pages.
+		/// </summary>
+		/// <param name="startPage">Zero-based index of a starting page.</param>
+		/// <param name="startIndex">Zero-based char index on a startPage.</param>
+		/// <param name="endPage">Zero-based index of a ending page.</param>
+		/// <param name="endIndex">Zero-based char index on a endPage.</param>
+		public void SelectText(int startPage, int startIndex, int endPage, int endIndex)
+		{
+			if (Document == null)
+				return;
+
+			if (startPage < 0)
+				startPage = 0;
+			if (startPage > Document.Pages.Count - 1)
+				startPage = Document.Pages.Count - 1;
+
+			if (endPage < 0)
+				endPage = 0;
+			if (endPage > Document.Pages.Count - 1)
+				endPage = Document.Pages.Count - 1;
+
+			int startCnt = Document.Pages[startPage].Text.CountChars;
+			int endCnt = Document.Pages[endPage].Text.CountChars;
+
+			if (startIndex < 0)
+				startIndex = 0;
+			if (startIndex > startCnt - 1)
+				startIndex = startCnt - 1;
+
+			if (endIndex < 0)
+				endIndex = 0;
+			if (endIndex > endCnt - 1)
+				endIndex = endCnt - 1;
+
+			_selectInfo = new SelectInfo()
+			{
+				StartPage = startPage,
+				StartIndex = startIndex,
+				EndPage = endPage,
+				EndIndex = endIndex
+			};
+			Invalidate();
+			OnSelectionChanged(EventArgs.Empty);
+		}
+
+		/// <summary>
+		/// Clear text selection
+		/// </summary>
+		public void DeselectText()
+		{
+			_selectInfo = new SelectInfo()
+			{
+				StartPage = -1,
+			};
+			Invalidate();
+			OnSelectionChanged(EventArgs.Empty);
+		}
+
+		/// <summary>
+		/// Determines if the specified point is contained within Pdf page.
+		/// </summary>
+		/// <param name="pt">The System.Drawing.Point to test.</param>
+		/// <returns>
+		/// This method returns the zero based page index if the point represented by pt is contained within this page; otherwise -1.
+		/// </returns>
+		public int PointInPage(Point pt)
+		{
+			for (int i = _startPage; i <= _endPage; i++)
+			{
+				//Actual coordinates of the page with the scroll
+				Rectangle actualRect = CalcActualRect(i);
+				if (actualRect.Contains(pt))
+					return i;
+			}
+			return -1;
+		}
+
+		/// <summary>
+		/// Highlight text on the page
+		/// </summary>
+		/// <param name="pageIndex">Zero-based index of the page</param>
+		/// <param name="highlightInfo">Sets the options for highlighting text</param>
+		public void HighlightText(int pageIndex, HighlightInfo highlightInfo)
+		{
+			HighlightText(pageIndex, highlightInfo.CharIndex, highlightInfo.CharsCount, highlightInfo.Color);
+		}
+
+		/// <summary>
+		/// Highlight text on the page
+		/// </summary>
+		/// <param name="pageIndex">Zero-based index of the page</param>
+		/// <param name="charIndex">Zero-based char index on the page.</param>
+		/// <param name="charsCount">The number of highlighted characters on the page or -1 for highlight text from charIndex to end of the page.</param>
+		/// <param name="color">Highlight color</param>
+		public void HighlightText(int pageIndex, int charIndex, int charsCount, Color color)
+		{
+			//normalize all user input
+			if (pageIndex < 0)
+				pageIndex = 0;
+			if (pageIndex > Document.Pages.Count - 1)
+				pageIndex = Document.Pages.Count - 1;
+
+			int charsCnt = Document.Pages[pageIndex].Text.CountChars;
+			if (charIndex < 0)
+				charIndex = 0;
+			if (charIndex > charsCnt - 1)
+				charIndex = charsCnt - 1;
+			if (charsCount < 0)
+				charsCount = charsCnt - charIndex;
+			if (charIndex + charsCount > charsCnt - 1)
+				charsCount = charsCnt - 1 - charIndex;
+			if (charsCount <= 0)
+				return;
+
+			var newEntry = new HighlightInfo() { CharIndex = charIndex, CharsCount = charsCount, Color = color };
+
+			if (!_highlightedText.ContainsKey(pageIndex))
+			{
+				if (color != Color.Empty)
+				{
+					_highlightedText.Add(pageIndex, new List<HighlightInfo>());
+					_highlightedText[pageIndex].Add(newEntry);
+				}
+			}
+			else
+			{
+				var entries = _highlightedText[pageIndex];
+				//Analize exists entries and remove overlapped and trancate intersecting entries
+				for (int i = entries.Count - 1; i >= 0; i--)
+				{
+					List<HighlightInfo> calcEntries;
+					if (CalcIntersectEntries(entries[i], newEntry, out calcEntries))
+					{
+						if (calcEntries.Count == 0)
+							entries.RemoveAt(i);
+						else
+							for (int j = 0; j < calcEntries.Count; j++)
+								if (j == 0)
+									entries[i] = calcEntries[j];
+								else
+									entries.Insert(i, calcEntries[j]);
+					}
+				}
+				if (color != Color.Empty)
+					entries.Add(newEntry);
+			}
+
+			Invalidate();
+			OnHighlightedTextChanged(EventArgs.Empty);
+		}
+
+		/// <summary>
+		/// Removes highlight from the text
+		/// </summary>
+		/// <param name="pageIndex">Zero-based index of the page</param>
+		/// <param name="charIndex">Zero-based char index on the page.</param>
+		/// <param name="charsCount">The number of highlighted characters on the page or -1 for highlight text from charIndex to end of the page.</param>
+		public void RemoveHighlightFromText(int pageIndex, int charIndex, int charsCount)
+		{
+			HighlightText(pageIndex, charIndex, charsCount, Color.Empty);
+		}
+
+		/// <summary>
+		/// Highlight selected text on the page by specified color
+		/// </summary>
+		/// <param name="color">Highlight color</param>
+		public void HilightSelectedText(Color color)
+		{
+			var selInfo = SelectInfo;
+			if (selInfo.StartPage < 0 || selInfo.StartIndex < 0)
+				return;
+
+			for (int i = selInfo.StartPage; i <= selInfo.EndPage; i++)
+			{
+				int start = (i == selInfo.StartPage ? selInfo.StartIndex : 0);
+				int len = (i == selInfo.EndPage ? selInfo.EndIndex - start : -1);
+				HighlightText(i, start, len, color);
+			}
+		}
+
+		/// <summary>
+		/// Removes highlight from selected text
+		/// </summary>
+		public void RemoveHilightFromSelectedText()
+		{
+			HilightSelectedText(Color.Empty);
+		}
+		#endregion
+
+		#region Load and Close document
+		/// <summary>
+		/// Open and load a PDF document from a file.
+		/// </summary>
+		/// <param name="path">Path to the PDF file (including extension)</param>
+		/// <param name="password">A string used as the password for PDF file. If no password needed, empty or NULL can be used.</param>
+		/// <exception cref="Exceptions.UnknownErrorException">unknown error</exception>
+		/// <exception cref="Exceptions.PdfFileNotFoundException">file not found or could not be opened</exception>
+		/// <exception cref="Exceptions.BadFormatException">file not in PDF format or corrupted</exception>
+		/// <exception cref="Exceptions.InvalidPasswordException">password required or incorrect password</exception>
+		/// <exception cref="Exceptions.UnsupportedSecuritySchemeException">unsupported security scheme</exception>
+		/// <exception cref="Exceptions.PdfiumException">Error occured in PDFium. See ErrorCode for detail</exception>
+		public void LoadDocument(string path, string password = null)
+		{
+			CloseDocument();
+			_document = PdfDocument.Load(path, _fillForms, password);
+			RecalcSize();
+			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
+			SetCurrentPage(_onstartPageIndex);
+			ScrollToPage(_onstartPageIndex);
+			SetupControls();
+			OnDocumentLoaded(EventArgs.Empty);
+
+		}
+
+		/// <summary>
+		/// Loads the PDF document from the specified stream.
+		/// </summary>
+		/// <param name="stream">The stream containing the PDF document to load. The stream must support seeking.</param>
+		/// <param name="password">A string used as the password for PDF file. If no password needed, empty or NULL can be used.</param>
+		/// <exception cref="Exceptions.UnknownErrorException">unknown error</exception>
+		/// <exception cref="Exceptions.PdfFileNotFoundException">file not found or could not be opened</exception>
+		/// <exception cref="Exceptions.BadFormatException">file not in PDF format or corrupted</exception>
+		/// <exception cref="Exceptions.InvalidPasswordException">password required or incorrect password</exception>
+		/// <exception cref="Exceptions.UnsupportedSecuritySchemeException">unsupported security scheme</exception>
+		/// <exception cref="Exceptions.PdfiumException">Error occured in PDFium. See ErrorCode for detail</exception>
+		/// <remarks><note type="note">The application should maintain the stream resources being valid until the PDF document close.</note></remarks>
+		public void LoadDocument(Stream stream, string password = null)
+		{
+			CloseDocument();
+			_document = PdfDocument.Load(stream, _fillForms, password);
+			RecalcSize();
+			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
+			SetCurrentPage(_onstartPageIndex);
+			ScrollToPage(_onstartPageIndex);
+			SetupControls();
+			OnDocumentLoaded(EventArgs.Empty);
+		}
+
+		/// <summary>
+		/// Loads the PDF document from the specified byte array.
+		/// </summary>
+		/// <param name="pdf">The byte array containing the PDF document to load.</param>
+		/// <param name="password">A string used as the password for PDF file. If no password needed, empty or NULL can be used.</param>
+		/// <exception cref="Exceptions.UnknownErrorException">unknown error</exception>
+		/// <exception cref="Exceptions.PdfFileNotFoundException">file not found or could not be opened</exception>
+		/// <exception cref="Exceptions.BadFormatException">file not in PDF format or corrupted</exception>
+		/// <exception cref="Exceptions.InvalidPasswordException">password required or incorrect password</exception>
+		/// <exception cref="Exceptions.UnsupportedSecuritySchemeException">unsupported security scheme</exception>
+		/// <exception cref="Exceptions.PdfiumException">Error occured in PDFium. See ErrorCode for detail</exception>
+		/// <remarks><note type="note">The application should not modify the byte array resources being valid until the PDF document close.</note></remarks>
+		public void LoadDocument(byte[] pdf, string password = null)
+		{
+			CloseDocument();
+			_document = PdfDocument.Load(pdf, _fillForms, password);
+			RecalcSize();
+			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
+			SetCurrentPage(_onstartPageIndex);
+			ScrollToPage(_onstartPageIndex);
+			SetupControls();
+			OnDocumentLoaded(EventArgs.Empty);
+		}
+
+		/// <summary>
+		/// Close a loaded PDF document.
+		/// </summary>
+		public void CloseDocument()
+		{
+			if (_document != null)
+			{
+				ReleaseControls();
+				_document.Dispose();
+				OnDocumentClosed(EventArgs.Empty);
+			}
+			_document = null;
+
+		}
 		#endregion
 
 		#region Constructors and initialization
@@ -1173,6 +1580,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private void ProcessDestination(PdfDestination pdfDestination)
 		{
 			ScrollToPage(pdfDestination.PageIndex);
+			Invalidate();
 		}
 
 		private void ProcessAction(PdfAction pdfAction)
@@ -1506,7 +1914,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					rrect.Height = rrect.Height / TilesCount;
 
 					_renderRects[j] = new RectangleF(
-						x + PageMargin.Left,
+						x + rrect.X + PageMargin.Left,
 						y + PageMargin.Top,
 						rrect.Width - PageMargin.Left - PageMargin.Right,
 						rrect.Height - PageMargin.Top - PageMargin.Bottom);
@@ -1628,6 +2036,102 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 			//no intersection
 			return false;
+		}
+
+		private void SetupControls()
+		{
+			if (BookmarksViewer != null)
+				BookmarksViewer.Document = _document;
+
+			if (NamedDestinationsViewer != null)
+				NamedDestinationsViewer.Document = _document;
+		}
+
+		private void ReleaseControls()
+		{
+			if (BookmarksViewer != null)
+				BookmarksViewer.Document = null;
+
+			if (NamedDestinationsViewer != null)
+				NamedDestinationsViewer.Document = null;
+		}
+		#endregion
+
+		#region Private fields, event handlers, methods, etc for bookmarks control
+		private BookmarksViewer _bookmarksViewer;
+
+		private void SubscribeBookmarksEvent()
+		{
+			if (_bookmarksViewer != null)
+				_bookmarksViewer.AfterSelect += _bookmarksViewer_AfterSelect;
+		}
+
+		private void UnsubscribeBookmarksEvent()
+		{
+			if (_bookmarksViewer != null)
+				_bookmarksViewer.AfterSelect -= _bookmarksViewer_AfterSelect;
+		}
+
+		private void _bookmarksViewer_AfterSelect(object sender, TreeViewEventArgs e)
+		{
+			if (NamedDestinationsViewer != null)
+				NamedDestinationsViewer.Document = _document;
+
+			var node = e.Node as BookmarksViewerNode;
+			if (node == null || node.Bookmark == null)
+				return;
+
+			if (node.Bookmark.Action != null)
+				ProcessAction(node.Bookmark.Action);
+			else if (node.Bookmark.Destination != null)
+				ProcessDestination(node.Bookmark.Destination);
+		}
+		#endregion
+
+		#region Private fields, event handlers, methods, etc for named dest control
+		private NamedDestinationsViewer _namedDestinationsViewer;
+	
+		private void SubscribeNamedDestinationsEvent()
+		{
+			if (_namedDestinationsViewer != null)
+			{
+				_namedDestinationsViewer.MouseDoubleClick += _namedDestinationsViewer_MouseDoubleClick;
+				_namedDestinationsViewer.KeyDown += _namedDestinationsViewer_KeyDown;
+			}
+		}
+
+		private void UnsubscribeNamedDestinationsEvent()
+		{
+			if (_namedDestinationsViewer != null)
+			{
+				_namedDestinationsViewer.MouseDoubleClick += _namedDestinationsViewer_MouseDoubleClick;
+				_namedDestinationsViewer.KeyDown += _namedDestinationsViewer_KeyDown;
+			}
+		}
+
+		private void _namedDestinationsViewer_KeyDown(object sender, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Enter)
+				ProcessNamedDestinationsClick();
+		}
+
+		private void _namedDestinationsViewer_MouseDoubleClick(object sender, MouseEventArgs e)
+		{
+			ProcessNamedDestinationsClick();
+		}
+
+
+		private void ProcessNamedDestinationsClick()
+		{
+			foreach (int index in _namedDestinationsViewer.SelectedIndices)
+			{
+				var item = _namedDestinationsViewer.Items[index] as NamedDestinationsViewerItem;
+				if (item == null)
+					continue;
+
+				if (item.Destination != null)
+					ProcessDestination(item.Destination);
+			}
 		}
 		#endregion
 
@@ -1752,325 +2256,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				case CursorTypes.NWSE: Cursor = Cursors.SizeNWSE; break;
 				default: Cursor = DefaultCursor; break;
 			}
-		}
-		#endregion
-
-		#region Load and Close document
-		/// <summary>
-		/// Open and load a PDF document from a file.
-		/// </summary>
-		/// <param name="path">Path to the PDF file (including extension)</param>
-		/// <param name="password">A string used as the password for PDF file. If no password needed, empty or NULL can be used.</param>
-		/// <exception cref="Exceptions.UnknownErrorException">unknown error</exception>
-		/// <exception cref="Exceptions.PdfFileNotFoundException">file not found or could not be opened</exception>
-		/// <exception cref="Exceptions.BadFormatException">file not in PDF format or corrupted</exception>
-		/// <exception cref="Exceptions.InvalidPasswordException">password required or incorrect password</exception>
-		/// <exception cref="Exceptions.UnsupportedSecuritySchemeException">unsupported security scheme</exception>
-		/// <exception cref="Exceptions.PdfiumException">Error occured in PDFium. See ErrorCode for detail</exception>
-		public void LoadDocument(string path, string password = null)
-		{
-			CloseDocument();
-			_document = PdfDocument.Load(path, _fillForms, password);
-			RecalcSize();
-			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
-			SetCurrentPage(_onstartPageIndex);
-			ScrollToPage(_onstartPageIndex);
-			OnDocumentLoaded(EventArgs.Empty);
-
-		}
-
-		/// <summary>
-		/// Loads the PDF document from the specified stream.
-		/// </summary>
-		/// <param name="stream">The stream containing the PDF document to load. The stream must support seeking.</param>
-		/// <param name="password">A string used as the password for PDF file. If no password needed, empty or NULL can be used.</param>
-		/// <exception cref="Exceptions.UnknownErrorException">unknown error</exception>
-		/// <exception cref="Exceptions.PdfFileNotFoundException">file not found or could not be opened</exception>
-		/// <exception cref="Exceptions.BadFormatException">file not in PDF format or corrupted</exception>
-		/// <exception cref="Exceptions.InvalidPasswordException">password required or incorrect password</exception>
-		/// <exception cref="Exceptions.UnsupportedSecuritySchemeException">unsupported security scheme</exception>
-		/// <exception cref="Exceptions.PdfiumException">Error occured in PDFium. See ErrorCode for detail</exception>
-		/// <remarks><note type="note">The application should maintain the stream resources being valid until the PDF document close.</note></remarks>
-		public void LoadDocument(Stream stream, string password = null)
-		{
-			CloseDocument();
-			_document = PdfDocument.Load(stream, _fillForms, password);
-			RecalcSize();
-			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
-			SetCurrentPage(_onstartPageIndex);
-			ScrollToPage(_onstartPageIndex);
-			OnDocumentLoaded(EventArgs.Empty);
-		}
-
-		/// <summary>
-		/// Loads the PDF document from the specified byte array.
-		/// </summary>
-		/// <param name="pdf">The byte array containing the PDF document to load.</param>
-		/// <param name="password">A string used as the password for PDF file. If no password needed, empty or NULL can be used.</param>
-		/// <exception cref="Exceptions.UnknownErrorException">unknown error</exception>
-		/// <exception cref="Exceptions.PdfFileNotFoundException">file not found or could not be opened</exception>
-		/// <exception cref="Exceptions.BadFormatException">file not in PDF format or corrupted</exception>
-		/// <exception cref="Exceptions.InvalidPasswordException">password required or incorrect password</exception>
-		/// <exception cref="Exceptions.UnsupportedSecuritySchemeException">unsupported security scheme</exception>
-		/// <exception cref="Exceptions.PdfiumException">Error occured in PDFium. See ErrorCode for detail</exception>
-		/// <remarks><note type="note">The application should not modify the byte array resources being valid until the PDF document close.</note></remarks>
-		public void LoadDocument(byte[] pdf, string password = null)
-		{
-			CloseDocument();
-			_document = PdfDocument.Load(pdf, _fillForms, password);
-			RecalcSize();
-			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
-			SetCurrentPage(_onstartPageIndex);
-			ScrollToPage(_onstartPageIndex);
-			OnDocumentLoaded(EventArgs.Empty);
-		}
-
-		/// <summary>
-		/// Close a loaded PDF document.
-		/// </summary>
-		public void CloseDocument()
-		{
-			if (_document != null)
-			{
-				_document.Dispose();
-				OnDocumentClosed(EventArgs.Empty);
-			}
-			_document = null;
-		}
-
-		#endregion
-
-		#region Public methods
-		/// <summary>
-		/// Scrolls the control view to the specified page.
-		/// </summary>
-		/// <param name="index">Zero-based index of a page.</param>
-		public void ScrollToPage(int index)
-		{
-			if (Document == null)
-				return;
-			if (ViewMode == ViewModes.SinglePage)
-			{
-				SetCurrentPage(index);
-			}
-			else
-			{
-				var rect = RFTR(renderRects(index));
-				AutoScrollPosition = new Point(rect.X, rect.Y);
-			}
-		}
-
-		/// <summary>
-		/// Rotates the specified page to the specified angle.
-		/// </summary>
-		/// <param name="pageIndex">Zero-based index of a page for rotation.</param>
-		/// <param name="angle">The angle which must be turned page</param>
-		/// <remarks>The PDF page rotates clockwise. See <see cref="PageRotate"/> for details.</remarks>
-		public void RotatePage(int pageIndex, PageRotate angle)
-		{
-			if (Document == null)
-				return;
-			Document.Pages[pageIndex].Rotation = angle;
-			RecalcSize();
-
-		}
-
-		/// <summary>
-		/// Selects the text contained in specified pages.
-		/// </summary>
-		/// <param name="SelInfo"><see cref="SelectInfo"/> structure that describe text selection parameters.</param>
-		public void SelectText(SelectInfo SelInfo)
-		{
-			SelectText(SelInfo.StartPage, SelInfo.StartIndex, SelInfo.EndPage, SelInfo.EndIndex);
-		}
-
-		/// <summary>
-		/// Selects the text contained in specified pages.
-		/// </summary>
-		/// <param name="startPage">Zero-based index of a starting page.</param>
-		/// <param name="startIndex">Zero-based char index on a startPage.</param>
-		/// <param name="endPage">Zero-based index of a ending page.</param>
-		/// <param name="endIndex">Zero-based char index on a endPage.</param>
-		public void SelectText(int startPage, int startIndex, int endPage, int endIndex)
-		{
-			if (Document == null)
-				return;
-
-			if (startPage < 0)
-				startPage = 0;
-			if (startPage > Document.Pages.Count - 1)
-				startPage = Document.Pages.Count - 1;
-
-			if (endPage < 0)
-				endPage = 0;
-			if (endPage > Document.Pages.Count - 1)
-				endPage = Document.Pages.Count - 1;
-
-			int startCnt = Document.Pages[startPage].Text.CountChars;
-			int endCnt = Document.Pages[endPage].Text.CountChars;
-
-			if (startIndex < 0)
-				startIndex = 0;
-			if (startIndex > startCnt - 1)
-				startIndex = startCnt - 1;
-
-			if (endIndex < 0)
-				endIndex = 0;
-			if (endIndex > endCnt - 1)
-				endIndex = endCnt - 1;
-
-			_selectInfo = new SelectInfo()
-			{
-				StartPage = startPage,
-				StartIndex = startIndex,
-				EndPage = endPage,
-				EndIndex = endIndex
-			};
-			Invalidate();
-			OnSelectionChanged(EventArgs.Empty);
-		}
-
-		/// <summary>
-		/// Clear text selection
-		/// </summary>
-		public void DeselectText()
-		{
-			_selectInfo = new SelectInfo()
-			{
-				StartPage = -1,
-			};
-			Invalidate();
-			OnSelectionChanged(EventArgs.Empty);
-		}
-
-		/// <summary>
-		/// Determines if the specified point is contained within Pdf page.
-		/// </summary>
-		/// <param name="pt">The System.Drawing.Point to test.</param>
-		/// <returns>
-		/// This method returns the zero based page index if the point represented by pt is contained within this page; otherwise -1.
-		/// </returns>
-		public int PointInPage(Point pt)
-		{
-			for (int i = _startPage; i <= _endPage; i++)
-			{
-				//Actual coordinates of the page with the scroll
-				Rectangle actualRect = CalcActualRect(i);
-				if (actualRect.Contains(pt))
-					return i;
-			}
-			return -1;
-		}
-
-		/// <summary>
-		/// Highlight text on the page
-		/// </summary>
-		/// <param name="pageIndex">Zero-based index of the page</param>
-		/// <param name="highlightInfo">Sets the options for highlighting text</param>
-		public void HighlightText(int pageIndex, HighlightInfo highlightInfo)
-		{
-			HighlightText(pageIndex, highlightInfo.CharIndex, highlightInfo.CharsCount, highlightInfo.Color);
-		}
-
-		/// <summary>
-		/// Highlight text on the page
-		/// </summary>
-		/// <param name="pageIndex">Zero-based index of the page</param>
-		/// <param name="charIndex">Zero-based char index on the page.</param>
-		/// <param name="charsCount">The number of highlighted characters on the page or -1 for highlight text from charIndex to end of the page.</param>
-		/// <param name="color">Highlight color</param>
-		public void HighlightText(int pageIndex, int charIndex, int charsCount, Color color)
-		{
-			//normalize all user input
-			if (pageIndex < 0)
-				pageIndex = 0;
-			if (pageIndex > Document.Pages.Count - 1)
-				pageIndex = Document.Pages.Count - 1;
-
-			int charsCnt = Document.Pages[pageIndex].Text.CountChars;
-			if (charIndex < 0)
-				charIndex = 0;
-			if (charIndex > charsCnt - 1)
-				charIndex = charsCnt - 1;
-			if (charsCount < 0)
-				charsCount = charsCnt - charIndex;
-			if (charIndex + charsCount > charsCnt - 1)
-				charsCount = charsCnt - 1 - charIndex;
-			if (charsCount <= 0)
-				return;
-
-			var newEntry = new HighlightInfo() { CharIndex = charIndex, CharsCount = charsCount, Color = color };
-
-			if (!_highlightedText.ContainsKey(pageIndex))
-			{
-				if (color != Color.Empty)
-				{
-					_highlightedText.Add(pageIndex, new List<HighlightInfo>());
-					_highlightedText[pageIndex].Add(newEntry);
-				}
-			}
-			else
-			{
-				var entries = _highlightedText[pageIndex];
-				//Analize exists entries and remove overlapped and trancate intersecting entries
-				for (int i = entries.Count - 1; i >= 0; i--)
-				{
-					List<HighlightInfo> calcEntries;
-					if (CalcIntersectEntries(entries[i], newEntry, out calcEntries))
-					{
-						if (calcEntries.Count == 0)
-							entries.RemoveAt(i);
-						else
-							for (int j = 0; j < calcEntries.Count; j++)
-								if (j == 0)
-									entries[i] = calcEntries[j];
-								else
-									entries.Insert(i, calcEntries[j]);
-					}
-				}
-				if (color != Color.Empty)
-					entries.Add(newEntry);
-			}
-
-			Invalidate();
-			OnHighlightedTextChanged(EventArgs.Empty);
-		}
-
-		/// <summary>
-		/// Removes highlight from the text
-		/// </summary>
-		/// <param name="pageIndex">Zero-based index of the page</param>
-		/// <param name="charIndex">Zero-based char index on the page.</param>
-		/// <param name="charsCount">The number of highlighted characters on the page or -1 for highlight text from charIndex to end of the page.</param>
-		public void RemoveHighlightFromText(int pageIndex, int charIndex, int charsCount)
-		{
-			HighlightText(pageIndex, charIndex, charsCount, Color.Empty);
-		}
-
-		/// <summary>
-		/// Highlight selected text on the page by specified color
-		/// </summary>
-		/// <param name="color">Highlight color</param>
-		public void HilightSelectedText(Color color)
-		{
-			var selInfo = SelectInfo;
-			if (selInfo.StartPage < 0 || selInfo.StartIndex < 0)
-				return;
-
-			for (int i = selInfo.StartPage; i <= selInfo.EndPage; i++)
-			{
-				int start = (i == selInfo.StartPage ? selInfo.StartIndex : 0);
-				int len = (i == selInfo.EndPage ? selInfo.EndIndex - start : -1);
-				HighlightText(i, start, len, color);
-			}
-		}
-
-		/// <summary>
-		/// Removes highlight from selected text
-		/// </summary>
-		public void RemoveHilightFromSelectedText()
-		{
-			HilightSelectedText(Color.Empty);
 		}
 		#endregion
 
