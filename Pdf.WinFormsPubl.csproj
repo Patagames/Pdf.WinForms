@@ -39,7 +39,21 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BookmarksViewer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="BookmarksViewer.Designer.cs">
+      <DependentUpon>BookmarksViewer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BookmarksViewerNode.cs" />
     <Compile Include="HighlightInfo.cs" />
+    <Compile Include="NamedDestinationsViewer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="NamedDestinationsViewer.Designer.cs">
+      <DependentUpon>NamedDestinationsViewer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NamedDestinationsViewerItem.cs" />
     <Compile Include="Properties\Error.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -57,6 +71,9 @@
     <Compile Include="ViewModes.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="NamedDestinationsViewer.resx">
+      <DependentUpon>NamedDestinationsViewer.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Error.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Error.Designer.cs</LastGenOutput>
