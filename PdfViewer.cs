@@ -463,6 +463,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_pageBackColor != value)
 				{
 					_pageBackColor = value;
+					Invalidate();
 					OnPageBackColorChanged(EventArgs.Empty);
 				}
 
@@ -483,6 +484,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_pageMargin != value)
 				{
 					_pageMargin = value;
+					RecalcSize();
 					OnPageMarginChanged(EventArgs.Empty);
 				}
 			}
@@ -505,6 +507,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					if (_pageBorderColorPen != null)
 						_pageBorderColorPen.Dispose();
 					_pageBorderColorPen = new Pen(_pageBorderColor);
+					Invalidate();
 					OnPageBorderColorChanged(EventArgs.Empty);
 				}
 			}
@@ -547,6 +550,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					if (_selectColorBrush != null)
 						_selectColorBrush.Dispose();
 					_selectColorBrush = new SolidBrush(_textSelectColor);
+					Invalidate();
 					OnTextSelectColorChanged(EventArgs.Empty);
 				}
 
@@ -569,6 +573,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					_formHighlightColor = value;
 					if (Document != null && Document.FormFill != null)
 						Document.FormFill.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
+					Invalidate();
 					OnFormHighlightColorChanged(EventArgs.Empty);
 				}
 			}
@@ -714,6 +719,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					if (_currentPageHighlightColorPen != null)
 						_currentPageHighlightColorPen.Dispose();
 					_currentPageHighlightColorPen = new Pen(_currentPageHighlightColor, 4);
+					Invalidate();
 					OnCurrentPageHighlightColorChanged(EventArgs.Empty);
 				}
 			}
@@ -899,6 +905,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (ViewMode == ViewModes.SinglePage)
 			{
 				SetCurrentPage(index);
+				Invalidate();
 			}
 			else
 			{
@@ -1359,7 +1366,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					//Draw text selectionn
 					DrawTextSelection(e.Graphics, selTmp, i);
 					//Draw current page highlight
-					DrawCurrentPage(e.Graphics, i, actualRect);
+					DrawCurrentPageHighlight(e.Graphics, i, actualRect);
 					//Calc coordinates for page separator
 					CalcPageSeparator(actualRect, i, ref separator);
 				}
@@ -1617,9 +1624,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return idx;
 		}
 
-		private void DrawCurrentPage(Graphics graphics, int pageIndex, Rectangle actualPageRect)
+		private void DrawCurrentPageHighlight(Graphics graphics, int pageIndex, Rectangle actualPageRect)
 		{
-			if (pageIndex == Document.Pages.CurrentIndex)
+			if (ShowCurrentPageHighlight && pageIndex == Document.Pages.CurrentIndex)
 			{
 				actualPageRect.Inflate(0, 0);
 				var sm = graphics.SmoothingMode;

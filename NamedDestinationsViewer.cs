@@ -28,7 +28,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_document != value)
 				{
 					_document = value;
-					BuildList(Document.NamedDestinations);
+					if (_document != null)
+						BuildList(Document.NamedDestinations);
+					else
+						VirtualListSize = 0;
 				}
 			}
 		}

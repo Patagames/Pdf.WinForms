@@ -29,7 +29,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				{
 					_document = value;
 					Nodes.Clear();
-					BuildTree(Nodes, Document.Bookmarks);
+					if (_document != null) 
+						BuildTree(Nodes, Document.Bookmarks);
 				}
 			}
 		}
