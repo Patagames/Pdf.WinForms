@@ -8,7 +8,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 	/// </summary>
 	public partial class NamedDestinationsViewer : ListView
 	{
-		// <code language="c#" source="..\Pdfium\Examples\Examples.cs" region="NamedDestinationsViewer class"></code>
+		// <code language="c#" source="..\PdfiumExamples\Examples.cs" region="NamedDestinationsViewer class"></code>
 		#region Private fields
 		private PdfDocument _document;
 		#endregion

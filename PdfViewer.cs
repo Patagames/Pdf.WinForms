@@ -436,10 +436,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				{
 					CloseDocument();
 					_document = value;
-					RecalcSize();
+					UpdateLayout();
 					if (_document != null)
 					{
 						_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
+						_document.Pages.PageInserted += Pages_PageInserted;
+						_document.Pages.PageDeleted += Pages_PageDeleted;
 						SetCurrentPage(_onstartPageIndex);
 						ScrollToPage(_onstartPageIndex);
 						SetupControls();
@@ -484,7 +486,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_pageMargin != value)
 				{
 					_pageMargin = value;
-					RecalcSize();
+					UpdateLayout();
 					OnPageMarginChanged(EventArgs.Empty);
 				}
 			}
@@ -527,7 +529,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_sizeMode != value)
 				{
 					_sizeMode = value;
-					RecalcSize();
+					UpdateLayout();
 					OnSizeModeChanged(EventArgs.Empty);
 				}
 			}
@@ -593,7 +595,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_zoom != value)
 				{
 					_zoom = value;
-					RecalcSize();
+					UpdateLayout();
 					OnZoomChanged(EventArgs.Empty);
 				}
 			}
@@ -653,7 +655,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_viewMode != value)
 				{
 					_viewMode = value;
-					RecalcSize();
+					UpdateLayout();
 					OnViewModeChanged(EventArgs.Empty);
 				}
 			}
@@ -788,7 +790,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if(_pageAlign!= value)
 				{
 					_pageAlign = value;
-					RecalcSize();
+					UpdateLayout();
 					OnPageAlignChanged(EventArgs.Empty);
 				}
 			}
@@ -829,7 +831,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_tilesCount != tmp)
 				{
 					_tilesCount = tmp;
-					RecalcSize();
+					UpdateLayout();
 					OnTilesCountChanged(EventArgs.Empty);
 				}
 			}
@@ -925,7 +927,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (Document == null)
 				return;
 			Document.Pages[pageIndex].Rotation = angle;
-			RecalcSize();
+			UpdateLayout();
 
 		}
 
@@ -1126,6 +1128,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			HilightSelectedText(Color.Empty);
 		}
+
+		/// <summary>
+		/// Ensures that all sizes and positions of pages of a PdfViewer control are properly updated for layout.
+		/// </summary>
+		public void UpdateLayout()
+		{
+			OnResize(EventArgs.Empty);
+		}
 		#endregion
 
 		#region Load and Close document
@@ -1144,8 +1154,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			CloseDocument();
 			_document = PdfDocument.Load(path, _fillForms, password);
-			RecalcSize();
+			UpdateLayout();
 			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
+			_document.Pages.PageInserted += Pages_PageInserted;
+			_document.Pages.PageDeleted += Pages_PageDeleted;
 			SetCurrentPage(_onstartPageIndex);
 			ScrollToPage(_onstartPageIndex);
 			SetupControls();
@@ -1169,8 +1181,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			CloseDocument();
 			_document = PdfDocument.Load(stream, _fillForms, password);
-			RecalcSize();
+			UpdateLayout();
 			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
+			_document.Pages.PageInserted += Pages_PageInserted;
+			_document.Pages.PageDeleted += Pages_PageDeleted;
 			SetCurrentPage(_onstartPageIndex);
 			ScrollToPage(_onstartPageIndex);
 			SetupControls();
@@ -1193,8 +1207,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			CloseDocument();
 			_document = PdfDocument.Load(pdf, _fillForms, password);
-			RecalcSize();
+			UpdateLayout();
 			_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
+			_document.Pages.PageInserted += Pages_PageInserted;
+			_document.Pages.PageDeleted += Pages_PageDeleted;
 			SetCurrentPage(_onstartPageIndex);
 			ScrollToPage(_onstartPageIndex);
 			SetupControls();
@@ -1805,10 +1821,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return new SizeF((float)nw, (float)nh);
 		}
 
-		private void RecalcSize()
-		{
-			OnResize(EventArgs.Empty);
-		}
 
 		private int DeviceToPage(int x, int y, out PointF pagePoint)
 		{
@@ -2272,6 +2284,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			OnCurrentPageChanged(EventArgs.Empty);
 			Invalidate();
 		}
+
+		void Pages_PageInserted(object sender, PageCollectionChangedEventArgs e)
+		{
+			UpdateLayout();
+		}
+
+		void Pages_PageDeleted(object sender, PageCollectionChangedEventArgs e)
+		{
+			UpdateLayout();
+
+		}
+
 		#endregion
 
 

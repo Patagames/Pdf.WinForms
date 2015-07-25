@@ -8,7 +8,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 	/// </summary>
 	public partial class BookmarksViewer : TreeView
 	{
-		// <code language="c#" source="..\Pdfium\Examples\Examples.cs" region="BookmarksViewer class"></code>
+		// <code language="c#" source="..\PdfiumExamples\Examples.cs" region="BookmarksViewer class"></code>
 		#region Private fields
 		private PdfDocument _document;
 		#endregion
