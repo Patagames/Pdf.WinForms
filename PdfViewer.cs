@@ -1019,6 +1019,41 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
+		/// Computes the location of the specified client point into page coordinates.
+		/// </summary>
+		/// <param name="pageIndex">Page index. Can be obtained by <see cref="PointInPage"/> method.</param>
+		/// <param name="pt">The client coordinate Point to convert. </param>
+		/// <returns>A Point that represents the converted Point, pt, in page coordinates.</returns>
+		/// <exception cref="IndexOutOfRangeException">The page index is out of range</exception>
+		/// <remarks>Permitted range of pages depends on the current view type and on some other parameters in the control.</remarks>
+		public PointF ClientToPage(int pageIndex, Point pt)
+		{
+			if (pageIndex < _startPage || pageIndex > _endPage)
+				throw new IndexOutOfRangeException(Properties.Error.err0002);
+			var page = Document.Pages[pageIndex];
+			var ar = CalcActualRect(pageIndex);
+			return page.DeviceToPage(ar.X, ar.Y, ar.Width, ar.Height, PageRotation(page), pt.X, pt.Y);
+		}
+
+		/// <summary>
+		/// Computes the location of the specified page point into client coordinates.
+		/// </summary>
+		/// <param name="pageIndex">Page index. Can be obtained by <see cref="PointInPage"/> method.</param>
+		/// <param name="pt">The page coordinate Point to convert. </param>
+		/// <returns>A Point that represents the converted Point, pt, in client coordinates.</returns>
+		/// <exception cref="IndexOutOfRangeException">The page index is out of range</exception>
+		/// <remarks>Permitted range of pages depends on the current view type and on some other parameters in the control.</remarks>
+		public Point PageToClient(int pageIndex, PointF pt)
+		{
+			if(pageIndex < _startPage || pageIndex > _endPage)
+				throw new IndexOutOfRangeException(Properties.Error.err0002);
+			var page = Document.Pages[pageIndex];
+			var ar = CalcActualRect(pageIndex);
+			return page.PageToDevice(ar.X, ar.Y, ar.Width, ar.Height, PageRotation(page), pt.X, pt.Y);
+		}
+
+
+		/// <summary>
 		/// Highlight text on the page
 		/// </summary>
 		/// <param name="pageIndex">Zero-based index of the page</param>
