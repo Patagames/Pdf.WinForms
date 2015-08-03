@@ -1446,7 +1446,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				{
 					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
 					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
-					graphics.FillRectangle(e.Brush, new Rectangle(pt1.X, pt1.Y, pt2.X - pt1.X, pt2.Y - pt1.Y));
+                    int x = pt1.X < pt2.X ? pt1.X : pt2.X;
+                    int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
+                    int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
+                    int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
+                    graphics.FillRectangle(e.Brush, new Rectangle(x, y, w, h));
 				}
 			}
 
@@ -1741,7 +1745,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				{
 					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
 					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
-					graphics.FillRectangle(_selectColorBrush, new Rectangle(pt1.X, pt1.Y, pt2.X - pt1.X, pt2.Y - pt1.Y));
+
+                    int x = pt1.X < pt2.X ? pt1.X : pt2.X;
+                    int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
+                    int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
+                    int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
+
+                    graphics.FillRectangle(_selectColorBrush, new Rectangle(x, y, w, h));
 				}
 			}
 		}
@@ -1887,8 +1897,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 			return Document.Pages[pageIndex].PageToDevice(
 					rect.X, rect.Y,
-					rect.Width, rect.Height,
-					PageRotation(Document.Pages[pageIndex]), x, y);
+					rect.Width, rect.Height, 
+					PageRotation(Document.Pages[pageIndex]), 
+                    x, y);
 		}
 
 		private PageRotate PageRotation(PdfPage pdfPage)
@@ -1949,41 +1960,73 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return new SizeF(width, y);
 		}
 
-		private SizeF CalcTilesVertical()
-		{
-			_renderRects = new RectangleF[Document.Pages.Count];
-			float y = 0;
-			float width = 0;
-			for (int i = 0; i < _renderRects.Length; i += TilesCount)
-			{
-				float height = 0;
-				float x = 0;
-				for (int j = i; j < i + TilesCount; j++)
-				{
-					if (j >= _renderRects.Length)
-						break;
-					var page = Document.Pages[j];
-					var rrect = GetRenderRect(j);
-					rrect.Width = rrect.Width / TilesCount;
-					rrect.Height = rrect.Height / TilesCount;
+        private SizeF CalcTilesVertical()
+        {
+            _renderRects = new RectangleF[Document.Pages.Count];
+            float maxX = 0;
+            float maxY = 0;
+            for (int i = 0; i < _renderRects.Length; i += TilesCount)
+            {
+                float x = 0;
+                float y = maxY;
+                for (int j = i; j < i + TilesCount; j++)
+                {
+                    if (j >= _renderRects.Length)
+                        break;
+                    var page = Document.Pages[j];
+                    var rrect = GetRenderRect(j);
+                    rrect.Width = rrect.Width / TilesCount;
+                    rrect.Height = rrect.Height / TilesCount;
 
-					_renderRects[j] = new RectangleF(
-						x + rrect.X + PageMargin.Left,
-						y + PageMargin.Top,
-						rrect.Width - PageMargin.Left - PageMargin.Right,
-						rrect.Height - PageMargin.Top - PageMargin.Bottom);
-					x += rrect.Width;
-					if (height < rrect.Height)
-						height = rrect.Height;
-					if (width < rrect.Width)
-						width = rrect.Width;
-				}
-				y += height;
-			}
-			return new SizeF(width, y);
-		}
+                    _renderRects[j] = new RectangleF(
+                        x + PageMargin.Left+(j==i?rrect.X:0),
+                        y + PageMargin.Top,
+                        rrect.Width - PageMargin.Left - PageMargin.Right,
+                        rrect.Height - PageMargin.Top - PageMargin.Bottom);
+                    x += rrect.Width + (j == i ? rrect.X : 0);
 
-		private SizeF CalcHorizontal()
+                    if (maxY < _renderRects[j].Y + _renderRects[j].Height + PageMargin.Bottom)
+                        maxY = _renderRects[j].Y + _renderRects[j].Height + PageMargin.Bottom;
+                    if (maxX < _renderRects[j].X + _renderRects[j].Width + PageMargin.Right)
+                        maxX = _renderRects[j].X + _renderRects[j].Width + PageMargin.Right;
+                }
+            }
+            return new SizeF(maxX, maxY);
+        }
+
+        private SizeF CalcTilesVerticalNoChangeSize()
+        {
+            _renderRects = new RectangleF[Document.Pages.Count];
+            float maxX = 0;
+            float maxY = 0;
+            for (int i = 0; i < _renderRects.Length; i += TilesCount)
+            {
+                float x = 0;
+                float y = maxY;
+                for (int j = i; j < i + TilesCount; j++)
+                {
+                    if (j >= _renderRects.Length)
+                        break;
+                    var page = Document.Pages[j];
+                    var rrect = GetRenderRect(j);
+ 
+                    _renderRects[j] = new RectangleF(
+                        x + PageMargin.Left,
+                        y + PageMargin.Top,
+                        rrect.Width - PageMargin.Left - PageMargin.Right,
+                        rrect.Height - PageMargin.Top - PageMargin.Bottom);
+                    x += rrect.Width;
+
+                    if (maxY < _renderRects[j].Y + _renderRects[j].Height+PageMargin.Bottom)
+                        maxY = _renderRects[j].Y + _renderRects[j].Height + PageMargin.Bottom;
+                    if (maxX < _renderRects[j].X + _renderRects[j].Width + PageMargin.Right)
+                        maxX = _renderRects[j].X + _renderRects[j].Width + PageMargin.Right;
+                }
+            }
+            return new SizeF(maxX, maxY);
+        }
+
+        private SizeF CalcHorizontal()
 		{
 			_renderRects = new RectangleF[Document.Pages.Count];
 			float height = 0;
