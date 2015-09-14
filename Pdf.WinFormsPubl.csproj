@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Patagames.Pdf.Net.Controls.WinForms</RootNamespace>
-    <AssemblyName>Patagamse.Pdf.WinForms</AssemblyName>
+    <AssemblyName>Patagames.Pdf.WinForms</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
