@@ -634,7 +634,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 					int len = Document.Pages[i].Text.CountChars;
 					if (i == selTmp.EndPage)
-						len = selTmp.EndIndex - s;
+						len = (selTmp.EndIndex+1) - s;
 
 					ret += Document.Pages[i].Text.GetText(s, len);
 				}
@@ -1463,6 +1463,46 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
+		/// Raises the System.Windows.Forms.Control.MouseDoubleClick event.
+		/// </summary>
+		/// <param name="e">A System.Windows.Forms.MouseEventArgs that contains the event data.</param>
+		protected override void OnMouseDoubleClick(MouseEventArgs e)
+		{
+			if (e.Button == System.Windows.Forms.MouseButtons.Left)
+			{
+				if (Document != null)
+				{
+					PointF page_point;
+					int idx = DeviceToPage(e.X, e.Y, out page_point);
+					if (idx >= 0)
+					{
+						var page = Document.Pages[idx];
+                        page.OnLButtonDown(0, page_point.X, page_point.Y);
+
+						int si, ei;
+						int ci = page.Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f);
+						if(GetWord(page.Text, ci, out si, out ei))
+						{
+							_selectInfo = new SelectInfo()
+							{
+								StartPage = idx,
+								EndPage = idx,
+								StartIndex = si,
+								EndIndex = ei
+							};
+							if (_selectInfo.StartPage >= 0)
+								OnSelectionChanged(EventArgs.Empty);
+							Invalidate();
+						}
+					}
+				}
+			}
+
+			base.OnMouseDoubleClick(e);
+		}
+
+
+		/// <summary>
 		/// Raises the System.Windows.Forms.Control.MouseDown event.
 		/// </summary>
 		/// <param name="e">A System.Windows.Forms.MouseEventArgs that contains the event data.</param>
@@ -1517,8 +1557,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				if (idx >= 0)
 				{
+					int ei = Document.Pages[idx].Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f);
+
 					if (!Document.Pages[idx].OnMouseMove(0, page_point.X, page_point.Y))
-						Cursor = DefaultCursor;
+					{
+						if (ei >= 0)
+							Cursor = Cursors.IBeam;
+						else
+							Cursor = DefaultCursor;
+
+					}
 
 					var pdfLink = Document.Pages[idx].Links.GetLinkAtPoint(page_point);
 					var webLink = Document.Pages[idx].Text.WebLinks.GetWebLinkAtPoint(page_point);
@@ -1527,7 +1575,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 					if (_mousePressed)
 					{
-						int ei = Document.Pages[idx].Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f);
 						if (ei >= 0)
 						{
 							_selectInfo = new SelectInfo()
@@ -1537,6 +1584,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 								EndIndex = ei,
 								StartIndex = _selectInfo.StartIndex
 							};
+							if(ei==6)
+							{
+								int ijk = 0;
+							}
+							System.Diagnostics.Trace.TraceInformation("sp={0}, ep={1}, si={2}, ei={3}",
+								_selectInfo.StartPage, _selectInfo.EndPage,
+								_selectInfo.StartIndex, _selectInfo.EndIndex);
 						}
 						Invalidate();
 					}
@@ -1736,6 +1790,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		private void DrawTextSelection(Graphics graphics, SelectInfo selTmp, int pageIndex)
 		{
+			if (selTmp.StartPage < 0)
+				return;
 			if (pageIndex >= selTmp.StartPage && pageIndex <= selTmp.EndPage)
 			{
 				int s = 0;
@@ -1744,7 +1800,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				int len = Document.Pages[pageIndex].Text.CountChars;
 				if (pageIndex == selTmp.EndPage)
-					len = selTmp.EndIndex - s;
+					len = (selTmp.EndIndex+1) - s;
 
 				var ti = Document.Pages[pageIndex].Text.GetTextInfo(s, len);
 				foreach (var rc in ti.Rects)
@@ -2157,6 +2213,42 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 			if (NamedDestinationsViewer != null)
 				NamedDestinationsViewer.Document = null;
+		}
+
+		private bool GetWord(PdfText text, int ci, out int si, out int ei)
+		{
+			si = ei = ci;
+			if (text == null)
+				return false;
+
+			if (ci < 0)
+				return false;
+			
+			for(int i= ci-1; i>=0; i--)
+			{
+				var c = text.GetCharacter(i);
+
+				if (
+					char.IsSeparator(c) || char.IsPunctuation(c) || char.IsControl(c) || 
+					char.IsWhiteSpace(c) || c == '\r' || c == '\n'
+					)
+					break;
+				si = i;
+			}
+
+			int last = text.CountChars;
+            for (int i = ci + 1; i < last; i++ )
+			{
+				var c = text.GetCharacter(i);
+
+				if (
+					char.IsSeparator(c) || char.IsPunctuation(c) || char.IsControl(c) ||
+					char.IsWhiteSpace(c) || c == '\r' || c == '\n'
+					)
+					break;
+				ei = i;
+			}
+			return true;
 		}
 		#endregion
 
