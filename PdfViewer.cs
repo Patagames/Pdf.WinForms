@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -1091,7 +1090,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				charIndex = charsCnt - 1;
 			if (charsCount < 0)
 				charsCount = charsCnt - charIndex;
-			if (charIndex + charsCount > charsCnt - 1)
+			if (charIndex + charsCount > charsCnt )
 				charsCount = charsCnt - 1 - charIndex;
 			if (charsCount <= 0)
 				return;
@@ -1157,7 +1156,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			for (int i = selInfo.StartPage; i <= selInfo.EndPage; i++)
 			{
 				int start = (i == selInfo.StartPage ? selInfo.StartIndex : 0);
-				int len = (i == selInfo.EndPage ? selInfo.EndIndex - start : -1);
+				int len = (i == selInfo.EndPage ? (selInfo.EndIndex+1) - start : -1);
 				HighlightText(i, start, len, color);
 			}
 		}
@@ -1300,19 +1299,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			DoubleBuffered = true;
 
 			_fillForms = new PdfForms();
+			_fillForms.SynchronizingObject = this;
 			_fillForms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
-			_fillForms.AppAlert += _forms_AppAlert;
-			_fillForms.AppBeep += _forms_AppBeep;
-			_fillForms.AppResponse += _forms_AppResponse;
-			_fillForms.BrowseFile += _forms_BrowseFile;
-			_fillForms.DoGotoAction += _forms_DoGotoAction;
-			_fillForms.DoNamedAction += _forms_DoNamedAction;
-			_fillForms.DoURIAction += _forms_DoURIAction;
-			_fillForms.GotoPage += _forms_GotoPage;
-			_fillForms.Invalidate += _forms_Invalidate;
-			_fillForms.OutputSelectedRect += _forms_OutputSelectedRect;
-			_fillForms.GetDocumentPath += Forms_GetDocumentPath;
-			_fillForms.SetCursor += Forms_SetCursor;
+			_fillForms.AppBeep += FormsAppBeep;
+			_fillForms.DoGotoAction += FormsDoGotoAction;
+			_fillForms.DoNamedAction += FormsDoNamedAction;
+			_fillForms.GotoPage += FormsGotoPage;
+			_fillForms.Invalidate += FormsInvalidate;
+			_fillForms.OutputSelectedRect += FormsOutputSelectedRect;
+			_fillForms.SetCursor += FormsSetCursor;
 
 
 		}
@@ -1419,7 +1414,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					//Draw fillforms selection
 					DrawFillFormsSelection(e.Graphics);
 					//Draw text highlight
-					DrawTextHighlight(e.Graphics, i);
+					if (_highlightedText.ContainsKey(i))
+						DrawTextHighlight(e.Graphics, _highlightedText[i], i);
 					//Draw text selectionn
 					DrawTextSelection(e.Graphics, selTmp, i);
 					//Draw current page highlight
@@ -1439,29 +1435,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		}
 
-		private void DrawTextHighlight(Graphics graphics, int pageIndex)
-		{
-			if (!_highlightedText.ContainsKey(pageIndex))
-				return;
-
-			var entries = _highlightedText[pageIndex];
-			foreach(var e in entries)
-			{
-				var textInfo = Document.Pages[pageIndex].Text.GetTextInfo(e.CharIndex, e.CharsCount);
-				foreach(var rc in textInfo.Rects)
-				{
-					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
-					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
-                    int x = pt1.X < pt2.X ? pt1.X : pt2.X;
-                    int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
-                    int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
-                    int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
-                    graphics.FillRectangle(e.Brush, new Rectangle(x, y, w, h));
-				}
-			}
-
-		}
-
 		/// <summary>
 		/// Raises the System.Windows.Forms.Control.MouseDoubleClick event.
 		/// </summary>
@@ -1477,7 +1450,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					if (idx >= 0)
 					{
 						var page = Document.Pages[idx];
-                        page.OnLButtonDown(0, page_point.X, page_point.Y);
+                        //page.OnLButtonDown(0, page_point.X, page_point.Y);
 
 						int si, ei;
 						int ci = page.Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f);
@@ -1584,13 +1557,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 								EndIndex = ei,
 								StartIndex = _selectInfo.StartIndex
 							};
-							if(ei==6)
-							{
-								int ijk = 0;
-							}
-							System.Diagnostics.Trace.TraceInformation("sp={0}, ep={1}, si={2}, ei={3}",
-								_selectInfo.StartPage, _selectInfo.EndPage,
-								_selectInfo.StartIndex, _selectInfo.EndIndex);
 						}
 						Invalidate();
 					}
@@ -1682,6 +1648,232 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		#endregion
 
+		#region Protected drawing functions
+		/// <summary>
+		/// Draws page background
+		/// </summary>
+		/// <param name="bmp"><see cref="PdfBitmap"/> object</param>
+		/// <param name="width">Actual width of the page</param>
+		/// <param name="height">Actual height of the page</param>
+		/// <remarks>
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// </list>
+		/// </remarks>
+		protected virtual void DrawPageBackColor(PdfBitmap bmp, int width, int height)
+		{
+			bmp.FillRect(0, 0, width, height, PageBackColor);
+		}
+
+		/// <summary>
+		/// Draws page content and fillforms
+		/// </summary>
+		/// <param name="graphics">The drawing surface</param>
+		/// <param name="page">Page to be drawn</param>
+		/// <param name="actualRect">Page bounds in control coordinates</param>
+		/// <remarks>
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// </list>
+		/// </remarks>
+		protected virtual void DrawPage(Graphics graphics, PdfPage page, Rectangle actualRect)
+		{
+			if (actualRect.Width <= 0 || actualRect.Height <= 0)
+				return;
+			using (PdfBitmap bmp = new PdfBitmap(actualRect.Width, actualRect.Height, true))
+			{
+				//Draw background to bitmap
+				DrawPageBackColor(bmp, actualRect.Width, actualRect.Height);
+
+				//Draw page content to bitmap
+				page.Render(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
+
+				//Draw fillforms to bitmap
+				page.RenderForms(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
+
+				//Draw bitmap to drawing surface
+				graphics.DrawImageUnscaled(bmp.Image, actualRect.X, actualRect.Y);
+
+				//Draw page border
+				graphics.DrawRectangle(_pageBorderColorPen, actualRect);
+			}
+		}
+
+		/// <summary>
+		/// Draws highlights inside a forms
+		/// </summary>
+		/// <param name="graphics">The drawing surface</param>
+		/// <remarks>
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// </list>
+		/// </remarks>
+		protected virtual void DrawFillFormsSelection(Graphics graphics)
+		{
+			foreach (var selectRc in _selectedRectangles)
+				graphics.FillRectangle(_selectColorBrush, selectRc);
+		}
+
+		/// <summary>
+		/// Draws text highlights
+		/// </summary>
+		/// <param name="graphics">The drawing surface</param>
+		/// <param name="entries">Highlights info.</param>
+		/// <param name="pageIndex">Page index to be drawn</param>
+		/// <remarks>
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// </list>
+		/// </remarks>
+		protected virtual void DrawTextHighlight(Graphics graphics, List<HighlightInfo> entries, int pageIndex)
+		{
+			foreach (var e in entries)
+			{
+				var textInfo = Document.Pages[pageIndex].Text.GetTextInfo(e.CharIndex, e.CharsCount);
+				foreach (var rc in textInfo.Rects)
+				{
+					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
+					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
+					int x = pt1.X < pt2.X ? pt1.X : pt2.X;
+					int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
+					int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
+					int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
+					graphics.FillRectangle(e.Brush, new Rectangle(x, y, w, h));
+				}
+			}
+
+		}
+
+		/// <summary>
+		/// Draws text selection
+		/// </summary>
+		/// <param name="graphics">The drawing surface</param>
+		/// <param name="selInfo">Selection info</param>
+		/// <param name="pageIndex">Page index to be drawn</param>
+		/// <remarks>
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// </list>
+		/// </remarks>
+		protected virtual void DrawTextSelection(Graphics graphics, SelectInfo selInfo, int pageIndex)
+		{
+			if (selInfo.StartPage < 0)
+				return;
+			if (pageIndex >= selInfo.StartPage && pageIndex <= selInfo.EndPage)
+			{
+				int s = 0;
+				if (pageIndex == selInfo.StartPage)
+					s = selInfo.StartIndex;
+
+				int len = Document.Pages[pageIndex].Text.CountChars;
+				if (pageIndex == selInfo.EndPage)
+					len = (selInfo.EndIndex + 1) - s;
+
+				var ti = Document.Pages[pageIndex].Text.GetTextInfo(s, len);
+				foreach (var rc in ti.Rects)
+				{
+					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
+					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
+
+					int x = pt1.X < pt2.X ? pt1.X : pt2.X;
+					int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
+					int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
+					int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
+
+					graphics.FillRectangle(_selectColorBrush, new Rectangle(x, y, w, h));
+				}
+			}
+		}
+
+		/// <summary>
+		/// Draws current page highlight
+		/// </summary>
+		/// <param name="graphics">The drawing surface</param>
+		/// <param name="pageIndex">Page index to be drawn</param>
+		/// <param name="actualRect">Page bounds in control coordinates</param>
+		/// <remarks>
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// </list>
+		/// </remarks>
+		protected virtual void DrawCurrentPageHighlight(Graphics graphics, int pageIndex, Rectangle actualRect)
+		{
+			if (ShowCurrentPageHighlight && pageIndex == Document.Pages.CurrentIndex)
+			{
+				actualRect.Inflate(0, 0);
+				var sm = graphics.SmoothingMode;
+				graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+				graphics.DrawRectangle(_currentPageHighlightColorPen, actualRect);
+				graphics.SmoothingMode = sm;
+			}
+		}
+
+		/// <summary>
+		/// Draws pages separatoes.
+		/// </summary>
+		/// <param name="graphics">The drawing surface</param>
+		/// <param name="separator">List of pair of points what represents separator</param>
+		/// <remarks>
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// </list>
+		/// </remarks>
+		private void DrawPageSeparators(Graphics graphics, ref List<Point> separator)
+		{
+			for (int sep = 0; sep < separator.Count; sep += 2)
+				graphics.DrawLine(_pageSeparatorColorPen, separator[sep], separator[sep + 1]);
+		}
+		#endregion
+
 		#region Private methods
 		private void ProcessLinkClicked(PdfLink pdfLink, PdfWebLink webLink)
 		{
@@ -1739,24 +1931,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return idx;
 		}
 
-		private void DrawCurrentPageHighlight(Graphics graphics, int pageIndex, Rectangle actualPageRect)
-		{
-			if (ShowCurrentPageHighlight && pageIndex == Document.Pages.CurrentIndex)
-			{
-				actualPageRect.Inflate(0, 0);
-				var sm = graphics.SmoothingMode;
-				graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-				graphics.DrawRectangle(_currentPageHighlightColorPen, actualPageRect);
-				graphics.SmoothingMode = sm;
-			}
-		}
-
-		private void DrawPageSeparators(Graphics graphics, ref List<Point> separator)
-		{
-			for (int sep = 0; sep < separator.Count; sep += 2)
-				graphics.DrawLine(_pageSeparatorColorPen, separator[sep], separator[sep + 1]);
-		}
-
 		private void CalcPageSeparator(Rectangle actualRect, int pageIndex, ref List<Point> separator)
 		{
 			if (!ShowPageSeparator || pageIndex == _endPage || ViewMode == ViewModes.SinglePage)
@@ -1785,65 +1959,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 						separator.Add(new Point(actualRect.Right, actualRect.Bottom + PageMargin.Bottom));
 					}
 					break;
-			}
-		}
-
-		private void DrawTextSelection(Graphics graphics, SelectInfo selTmp, int pageIndex)
-		{
-			if (selTmp.StartPage < 0)
-				return;
-			if (pageIndex >= selTmp.StartPage && pageIndex <= selTmp.EndPage)
-			{
-				int s = 0;
-				if (pageIndex == selTmp.StartPage)
-					s = selTmp.StartIndex;
-
-				int len = Document.Pages[pageIndex].Text.CountChars;
-				if (pageIndex == selTmp.EndPage)
-					len = (selTmp.EndIndex+1) - s;
-
-				var ti = Document.Pages[pageIndex].Text.GetTextInfo(s, len);
-				foreach (var rc in ti.Rects)
-				{
-					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
-					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
-
-                    int x = pt1.X < pt2.X ? pt1.X : pt2.X;
-                    int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
-                    int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
-                    int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
-
-                    graphics.FillRectangle(_selectColorBrush, new Rectangle(x, y, w, h));
-				}
-			}
-		}
-
-		private void DrawFillFormsSelection(Graphics graphics)
-		{
-			foreach (var selectRc in _selectedRectangles)
-				graphics.FillRectangle(_selectColorBrush, selectRc);
-		}
-
-		private void DrawPage(Graphics graphics, PdfPage page, Rectangle actualRect)
-		{
-			if (actualRect.Width <= 0 || actualRect.Height <= 0)
-				return;
-			using (PdfBitmap bmp = new PdfBitmap(actualRect.Width, actualRect.Height, true))
-			{
-				//Draw background to bitmap
-				bmp.FillRect(0, 0, actualRect.Width, actualRect.Height, PageBackColor);
-
-				//Draw page content to bitmap
-				page.Render(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
-
-				//Draw fillforms to bitmap
-				page.RenderForms(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
-
-				//Draw bitmap to drawing surface
-				graphics.DrawImageUnscaled(bmp.Image, actualRect.X, actualRect.Y);
-
-				//Draw page border
-				graphics.DrawRectangle(_pageBorderColorPen, actualRect);
 			}
 		}
 
@@ -2331,12 +2446,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		#endregion
 
 		#region FillForms event handlers
-		void _forms_Invalidate(object sender, EventArguments.InvalidatePageEventArgs e)
+		/// <summary>
+		/// Called by the engine when it is required to redraw the page
+		/// </summary>
+		/// <param name="e">An <see cref="InvalidatePageEventArgs"/> that contains the event data.</param>
+		protected virtual void OnFormsInvalidate(InvalidatePageEventArgs e)
 		{
 			Invalidate();
 		}
 
-		void _forms_GotoPage(object sender, EventArguments.EventArgs<int> e)
+		/// <summary>
+		/// Called by the engine when it is required to execute GoTo operation
+		/// </summary>
+		/// <param name="e">An EventArgs that contains the event data.</param>
+		protected virtual void OnFormsGotoPage(EventArgs<int> e)
 		{
 			if (Document == null)
 				return;
@@ -2344,12 +2467,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			ScrollToPage(e.Value);
 		}
 
-		void _forms_DoURIAction(object sender, EventArguments.EventArgs<string> e)
-		{
-			Process.Start(e.Value);
-		}
-
-		void _forms_DoNamedAction(object sender, EventArguments.EventArgs<string> e)
+		/// <summary>
+		/// Called by the engine when it is required to execute a named action
+		/// </summary>
+		/// <param name="e">An EventArgs that contains the event data.</param>
+		protected virtual void OnFormsDoNamedAction(EventArgs<string> e)
 		{
 			if (Document == null)
 				return;
@@ -2361,7 +2483,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 		}
 
-		void _forms_DoGotoAction(object sender, EventArguments.DoGotoActionEventArgs e)
+		/// <summary>
+		/// Called by the engine when it is required to execute a GoTo action
+		/// </summary>
+		/// <param name="e">An <see cref="DoGotoActionEventArgs"/> that contains the event data.</param>
+		protected virtual void OnFormsDoGotoAction(DoGotoActionEventArgs e)
 		{
 			if (Document == null)
 				_onstartPageIndex = e.PageIndex;
@@ -2372,15 +2498,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 		}
 
-		void _forms_BrowseFile(object sender, EventArguments.BrowseFileEventArgs e)
-		{
-			OpenFileDialog ofd = new OpenFileDialog();
-			ofd.Multiselect = false;
-			if (ofd.ShowDialog(this) == DialogResult.OK)
-				e.FilePath = ofd.FileName;
-		}
-
-		void _forms_AppBeep(object sender, EventArguments.EventArgs<BeepTypes> e)
+		/// <summary>
+		/// Called by the engine when it is required to play the sound
+		/// </summary>
+		/// <param name="e">An EventArgs that contains the event data.</param>
+		protected virtual void OnFormsAppBeep(EventArgs<BeepTypes> e)
 		{
 			switch (e.Value)
 			{
@@ -2391,45 +2513,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				case BeepTypes.Status: System.Media.SystemSounds.Beep.Play(); break;
 				default: System.Media.SystemSounds.Beep.Play(); break;
 			}
-
 		}
 
-		void _forms_AppAlert(object sender, EventArguments.AppAlertEventEventArgs e)
-		{
-			MessageBoxButtons bt = MessageBoxButtons.OK;
-			MessageBoxIcon mbi = MessageBoxIcon.None;
-			switch (e.ButtonType)
-			{
-				case ButtonTypes.OkCancel: bt = MessageBoxButtons.OKCancel; break;
-				case ButtonTypes.YesNo: bt = MessageBoxButtons.YesNo; break;
-				case ButtonTypes.YesNoCancel: bt = MessageBoxButtons.YesNoCancel; break;
-			}
-			switch (e.IconType)
-			{
-				case IconTypes.Error: mbi = MessageBoxIcon.Error; break;
-				case IconTypes.Question: mbi = MessageBoxIcon.Question; break;
-				case IconTypes.Status: mbi = MessageBoxIcon.Information; break;
-				case IconTypes.Warning: mbi = MessageBoxIcon.Warning; break;
-			}
-			var ret = MessageBox.Show(this, e.Text, e.Title, bt, mbi);
-			switch (ret)
-			{
-				case DialogResult.OK: e.DialogResult = DialogResults.Ok; break;
-				case DialogResult.Yes: e.DialogResult = DialogResults.Yes; break;
-				case DialogResult.No: e.DialogResult = DialogResults.No; break;
-				case DialogResult.Cancel: e.DialogResult = DialogResults.Cancel; break;
-			}
-		}
-
-		void Forms_GetDocumentPath(object sender, EventArgs<string> e)
-		{
-		}
-
-		void _forms_AppResponse(object sender, EventArguments.AppResponseEventArgs e)
-		{
-		}
-
-		void _forms_OutputSelectedRect(object sender, EventArguments.InvalidatePageEventArgs e)
+		/// <summary>
+		/// Called by the engine when it is required to draw selected regions in FillForms
+		/// </summary>
+		/// <param name="e">An <see cref="InvalidatePageEventArgs"/> that contains the event data.</param>
+		protected virtual void OnFormsOutputSelectedRect(InvalidatePageEventArgs e)
 		{
 			if (Document == null)
 				return;
@@ -2440,7 +2530,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			Invalidate();
 		}
 
-		void Forms_SetCursor(object sender, SetCursorEventArgs e)
+		/// <summary>
+		/// Called by the engine when it is required to change the cursor
+		/// </summary>
+		/// <param name="e">An <see cref="SetCursorEventArgs"/> that contains the event data.</param>
+		protected virtual void OnFormsSetCursor(SetCursorEventArgs e)
 		{
 			switch (e.Cursor)
 			{
@@ -2451,6 +2545,43 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				case CursorTypes.NWSE: Cursor = Cursors.SizeNWSE; break;
 				default: Cursor = DefaultCursor; break;
 			}
+		}
+		#endregion
+
+		#region FillForms event handlers
+		private void FormsInvalidate(object sender, InvalidatePageEventArgs e)
+		{
+			OnFormsInvalidate(e);
+		}
+
+		private void FormsGotoPage(object sender, EventArgs<int> e)
+		{
+			OnFormsGotoPage(e);
+		}
+
+		private void FormsDoNamedAction(object sender, EventArgs<string> e)
+		{
+			OnFormsDoNamedAction(e);
+		}
+
+		private void FormsDoGotoAction(object sender, DoGotoActionEventArgs e)
+		{
+			OnFormsDoGotoAction(e);
+		}
+
+		private void FormsAppBeep(object sender, EventArgs<BeepTypes> e)
+		{
+			OnFormsAppBeep(e);
+		}
+
+		private void FormsOutputSelectedRect(object sender, InvalidatePageEventArgs e)
+		{
+			OnFormsOutputSelectedRect(e);
+		}
+
+		private void FormsSetCursor(object sender, SetCursorEventArgs e)
+		{
+			OnFormsSetCursor(e);
 		}
 		#endregion
 
