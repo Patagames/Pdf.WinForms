@@ -2253,8 +2253,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			try
 			{
 				Document.Pages.CurrentPageChanged -= Pages_CurrentPageChanged;
-				Document.Pages.CurrentIndex = index;
-				OnCurrentPageChanged(EventArgs.Empty);
+				if (Document.Pages.CurrentIndex != index)
+				{
+					Document.Pages.CurrentIndex = index;
+					OnCurrentPageChanged(EventArgs.Empty);
+				}
 			}
 			finally
 			{

@@ -68,3 +68,6 @@
 /obj/Debug/Patagames.Pdf.Net.Controls.WinForms.NamedDestinationsViewer.resources
 /obj/Publish/Patagames.Pdf.Net.Controls.WinForms.NamedDestinationsViewer.resources
 /obj/Release/Patagames.Pdf.Net.Controls.WinForms.NamedDestinationsViewer.resources
+/obj/Debug
+/obj/Publish
+/obj/Release
