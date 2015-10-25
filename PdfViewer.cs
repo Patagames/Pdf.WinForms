@@ -957,28 +957,28 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (Document == null)
 				return;
 
-			if (startPage < 0)
-				startPage = 0;
 			if (startPage > Document.Pages.Count - 1)
 				startPage = Document.Pages.Count - 1;
+			if (startPage < 0)
+				startPage = 0;
 
-			if (endPage < 0)
-				endPage = 0;
 			if (endPage > Document.Pages.Count - 1)
 				endPage = Document.Pages.Count - 1;
+			if (endPage < 0)
+				endPage = 0;
 
 			int startCnt = Document.Pages[startPage].Text.CountChars;
 			int endCnt = Document.Pages[endPage].Text.CountChars;
 
-			if (startIndex < 0)
-				startIndex = 0;
 			if (startIndex > startCnt - 1)
 				startIndex = startCnt - 1;
+			if (startIndex < 0)
+				startIndex = 0;
 
-			if (endIndex < 0)
-				endIndex = 0;
 			if (endIndex > endCnt - 1)
 				endIndex = endCnt - 1;
+			if (endIndex < 0)
+				endIndex = 0;
 
 			_selectInfo = new SelectInfo()
 			{
@@ -1135,6 +1135,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <summary>
 		/// Removes highlight from the text
 		/// </summary>
+		public void RemoveHighlightFromText()
+		{
+			_highlightedText.Clear();
+			Invalidate();
+		}
+
+		/// <summary>
+		/// Removes highlight from the text
+		/// </summary>
 		/// <param name="pageIndex">Zero-based index of the page</param>
 		/// <param name="charIndex">Zero-based char index on the page.</param>
 		/// <param name="charsCount">The number of highlighted characters on the page or -1 for highlight text from charIndex to end of the page.</param>
@@ -1176,6 +1185,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			OnResize(EventArgs.Empty);
 		}
+
+		/// <summary>
+		/// Calculates the actual rectangle of the specified page in client coordinates
+		/// </summary>
+		/// <param name="index">Zero-based page index</param>
+		/// <returns>Calculated rectangle</returns>
+		public Rectangle CalcActualRect(int index)
+		{
+			var rect = RFTR(renderRects(index));
+			rect.X += AutoScrollPosition.X;
+			rect.Y += AutoScrollPosition.Y;
+			return rect;
+		}
+
 		#endregion
 
 		#region Load and Close document
@@ -1266,9 +1289,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			{
 				ReleaseControls();
 				_document.Dispose();
+				_document = null;
 				OnDocumentClosed(EventArgs.Empty);
 			}
 			_document = null;
+			_onstartPageIndex = 0;
+			AutoScrollMinSize = new Size(0, 0);
+			Invalidate();
 
 		}
 		#endregion
@@ -1960,14 +1987,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					}
 					break;
 			}
-		}
-
-		private Rectangle CalcActualRect(int index)
-		{
-			var rect = RFTR(renderRects(index));
-			rect.X += AutoScrollPosition.X;
-			rect.Y += AutoScrollPosition.Y;
-			return rect;
 		}
 
 		private Rectangle RFTR(RectangleF rect)

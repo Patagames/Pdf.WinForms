@@ -66,8 +66,55 @@
       <DependentUpon>PdfViewer.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\PdfToolStrip.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>PdfToolStrip.resx</DependentUpon>
+    </Compile>
     <Compile Include="SelectInfo.cs" />
     <Compile Include="SizeModes.cs" />
+    <Compile Include="ToolBars\PdfToolStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripClipboard.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripMain.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripPages.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripRotate.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripSearch.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripSizes.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripViewModes.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripZoom.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\PdfToolStripZoomEx.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\SearchBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ToolBars\SearchBar.Designer.cs">
+      <DependentUpon>SearchBar.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ToolBars\ToolStripSearchBar.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ToolBars\ToolStripTrackBar.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="ViewModes.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -80,6 +127,13 @@
     </EmbeddedResource>
     <EmbeddedResource Include="PdfViewer.resx">
       <DependentUpon>PdfViewer.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\PdfToolStrip.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>PdfToolStrip.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ToolBars\SearchBar.resx">
+      <DependentUpon>SearchBar.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
