@@ -47,6 +47,7 @@
     </Compile>
     <Compile Include="BookmarksViewerNode.cs" />
     <Compile Include="HighlightInfo.cs" />
+    <Compile Include="MouseModes.cs" />
     <Compile Include="NamedDestinationsViewer.cs">
       <SubType>Component</SubType>
     </Compile>

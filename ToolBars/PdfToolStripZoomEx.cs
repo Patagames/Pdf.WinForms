@@ -201,7 +201,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			if (tstb == null)
 				return;
 			tstb.TrackBar.ValueChanged -= TrackBar_ValueChanged;
-			tstb.TrackBar.Value = _currentZoomLevel;
+            tstb.TrackBar.Value = this.LayoutStyle== ToolStripLayoutStyle.VerticalStackWithOverflow ? _currentZoomLevel*-1 : _currentZoomLevel;
 			tstb.TrackBar.ValueChanged += TrackBar_ValueChanged;
 		}
 
@@ -233,7 +233,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 				if (tstb != null)
 				{
 					tstb.TrackBar.Orientation = Orientation.Vertical;
-					tstb.Size = new Size(_trackBarHeight, _trackBarWidth);
+                    tstb.Size = new Size(_trackBarHeight, _trackBarWidth);
+
+					tstb.TrackBar.Minimum = (ZoomLevel.Length - 1)*-1;
+					tstb.TrackBar.Maximum = 0;
 				}
 			}
 			else
@@ -243,8 +246,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 				{
 					tstb.TrackBar.Orientation = Orientation.Horizontal;
 					tstb.Size = new Size(_trackBarWidth, _trackBarHeight);
+
+					tstb.TrackBar.Maximum = (ZoomLevel.Length - 1);
+					tstb.TrackBar.Minimum = 0;
 				}
 			}
+			UpdateButtons();
 		}
 
 		#endregion
@@ -366,7 +373,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		/// <param name="item">The item that has been clicked</param>
 		protected virtual void OnTrackBarValueChanged(ToolStripControlHost item)
 		{
-			SetZoom((item as ToolStripTrackBar).TrackBar.Value);
+			var val = (item as ToolStripTrackBar).TrackBar.Value;
+			SetZoom(this.LayoutStyle == ToolStripLayoutStyle.VerticalStackWithOverflow ? val * -1 : val);
 			UpdateButtons();
 		}
 
