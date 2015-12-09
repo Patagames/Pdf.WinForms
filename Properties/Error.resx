@@ -126,4 +126,7 @@
   <data name="ErrorHeader" xml:space="preserve">
     <value>Error!</value>
   </data>
+  <data name="InfoHeader" xml:space="preserve">
+    <value>Information</value>
+  </data>
 </root>

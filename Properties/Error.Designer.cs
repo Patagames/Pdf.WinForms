@@ -86,5 +86,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms.Properties {
                 return ResourceManager.GetString("ErrorHeader", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Information.
+        /// </summary>
+        internal static string InfoHeader {
+            get {
+                return ResourceManager.GetString("InfoHeader", resourceCulture);
+            }
+        }
     }
 }
