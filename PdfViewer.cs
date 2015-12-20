@@ -45,13 +45,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private Color _currentPageHighlightColor;
 		private bool _showCurrentPageHighlight;
 		private ContentAlignment _pageAlign;
-		private RenderFlags _renderFlags;
+		private RenderFlags _renderFlags = RenderFlags.FPDF_LCD_TEXT | RenderFlags.FPDF_NO_CATCH;
 		private int _tilesCount;
 		private MouseModes _mouseMode;
 
 		private RectangleF[] _renderRects;
 		private int _startPage { get { return ViewMode == ViewModes.SinglePage ? Document.Pages.CurrentIndex : 0; } }
 		private int _endPage { get { return ViewMode == ViewModes.SinglePage ? Document.Pages.CurrentIndex : (_renderRects != null ? _renderRects.Length - 1 : -1); } }
+
+		PdfPage _invalidatePage = null;
+		FS_RECTF _invalidateRect;
 		#endregion
 
 		#region Events
@@ -189,6 +192,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <param name="e">An System.EventArgs that contains the event data.</param>
 		protected virtual void OnDocumentLoaded(EventArgs e)
 		{
+			if (Document != null && Document.FormFill != null)
+				Document.FormFill.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
+
 			if (DocumentLoaded != null)
 				DocumentLoaded(this, e);
 		}
@@ -1414,10 +1420,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			_fillForms.Invalidate += FormsInvalidate;
 			_fillForms.OutputSelectedRect += FormsOutputSelectedRect;
 			_fillForms.SetCursor += FormsSetCursor;
-
-
+			_fillForms.FocusChanged += FormsFocusChanged;
 		}
-
 		#endregion
 
 		#region Overrides
@@ -1787,6 +1791,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				//Draw page content to bitmap
 				page.Render(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
+
+				if(_invalidatePage!= null && _invalidatePage == page)
+				{
+					var pt1 = page.PageToDevice(0, 0, actualRect.Width, actualRect.Height, PageRotation(page), _invalidateRect.left, _invalidateRect.top);
+					var pt2 = page.PageToDevice(0, 0, actualRect.Width, actualRect.Height, PageRotation(page), _invalidateRect.right, _invalidateRect.bottom);
+					bmp.FillRect(pt1.X, pt1.Y, pt2.X - pt1.X, pt2.Y - pt1.Y, PageBackColor);
+                }
 
 				//Draw fillforms to bitmap
 				page.RenderForms(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
@@ -2632,8 +2643,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		#region FillForms event handlers
 		private void FormsInvalidate(object sender, InvalidatePageEventArgs e)
 		{
+			if(_invalidatePage == null)
+			{
+				_invalidatePage = e.Page;
+				_invalidateRect = new FS_RECTF() { left = e.Rect.left+3.0f, right = e.Rect.right-3.0f, top = e.Rect.top+3.0f, bottom = e.Rect.bottom-3.0f };
+            }
 			OnFormsInvalidate(e);
 		}
+
+		private void FormsFocusChanged(object sender, FocusChangedEventArgs e)
+		{
+			_invalidatePage = null;
+        }
 
 		private void FormsGotoPage(object sender, EventArgs<int> e)
 		{
