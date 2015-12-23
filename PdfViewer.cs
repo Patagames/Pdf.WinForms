@@ -1259,7 +1259,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <exception cref="Exceptions.NoLicenseException">This exception thrown only in trial mode if document cannot be opened due to a license restrictions"</exception>
 		/// <remarks>
 		/// <note type="note">
-		/// With the trial version you can load documents which size is smaller than 1024 Kb, or greater than 10 Mb only.
+		/// With the trial version the documents which size is smaller than 1024 Kb, or greater than 10 Mb can be loaded without any restrictions. For other documents the allowed ranges is 1.5 - 2 Mb; 2.5 - 3 Mb; 3.5 - 4 Mb; 4.5 - 5 Mb and so on.
 		/// </note> 
 		/// </remarks>
 		public void LoadDocument(string path, string password = null)
@@ -1298,7 +1298,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <remarks>
 		/// <note type="note">
 		/// <para>The application should maintain the stream resources being valid until the PDF document close.</para>
-		/// <para>With the trial version you can load documents which size is smaller than 1024 Kb, or greater than 10 Mb only.</para>
+		/// <para>With the trial version the documents which size is smaller than 1024 Kb, or greater than 10 Mb can be loaded without any restrictions. For other documents the allowed ranges is 1.5 - 2 Mb; 2.5 - 3 Mb; 3.5 - 4 Mb; 4.5 - 5 Mb and so on.</para>
 		/// </note> 
 		/// </remarks>
 		public void LoadDocument(Stream stream, string password = null)
@@ -1338,7 +1338,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <remarks>
 		/// <note type="note">
 		/// <para>The application should maintain the byte array being valid until the PDF document close.</para>
-		/// <para>With the trial version you can load documents which size is smaller than 1024 Kb, or greater than 10 Mb only.</para>
+		/// <para>With the trial version the documents which size is smaller than 1024 Kb, or greater than 10 Mb can be loaded without any restrictions. For other documents the allowed ranges is 1.5 - 2 Mb; 2.5 - 3 Mb; 3.5 - 4 Mb; 4.5 - 5 Mb and so on.</para>
 		/// </note> 
 		/// </remarks>
 		public void LoadDocument(byte[] pdf, string password = null)
