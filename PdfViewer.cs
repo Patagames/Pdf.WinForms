@@ -1517,7 +1517,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					//Actual coordinates of the page with the scroll
 					Rectangle actualRect = CalcActualRect(i);
 					if (!actualRect.IntersectsWith(ClientRectangle))
+					{
+						Document.Pages[i].Dispose();
 						continue; //Page is invisible. Skip it
+					}
 
 					//Draw page
 					DrawPage(e.Graphics, Document.Pages[i], actualRect);
@@ -2212,7 +2215,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			float width = 0;
 			for (int i = 0; i < _renderRects.Length; i++)
 			{
-				var page = Document.Pages[i];
 				var rrect = GetRenderRect(i);
 				_renderRects[i] = new RectangleF(
 					rrect.X + PageMargin.Left,
@@ -2239,7 +2241,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 {
                     if (j >= _renderRects.Length)
                         break;
-                    var page = Document.Pages[j];
                     var rrect = GetRenderRect(j);
                     rrect.Width = rrect.Width / TilesCount;
                     rrect.Height = rrect.Height / TilesCount;
@@ -2273,7 +2274,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 {
                     if (j >= _renderRects.Length)
                         break;
-                    var page = Document.Pages[j];
                     var rrect = GetRenderRect(j);
  
                     _renderRects[j] = new RectangleF(
@@ -2299,7 +2299,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			float x = 0;
 			for (int i = 0; i < _renderRects.Length; i++)
 			{
-				var page = Document.Pages[i];
 				var rrect = GetRenderRect(i);
 				_renderRects[i] = new RectangleF(
 					x + PageMargin.Left,
@@ -2319,7 +2318,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			SizeF ret = new SizeF(0, 0);
 			for (int i = 0; i < _renderRects.Length; i++)
 			{
-				var page = Document.Pages[i];
 				var rrect = GetRenderRect(i);
 				_renderRects[i] = new RectangleF(
 					rrect.X + PageMargin.Left,
