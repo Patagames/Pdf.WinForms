@@ -1692,10 +1692,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
-		/// Raises the System.Windows.Forms.Control.KeyDown event.
+		/// Raises the System.Windows.Forms.Control.PreviewKeyDown event.
 		/// </summary>
-		/// <param name="e">A System.Windows.Forms.KeyEventArgs that contains the event data.</param>
-		protected override void OnKeyDown(KeyEventArgs e)
+		/// <param name="e">A System.Windows.Forms.PreviewKeyDownEventArgs that contains the event data.</param>
+		protected override void OnPreviewKeyDown(PreviewKeyDownEventArgs e)
 		{
 			if (Document != null)
 			{
@@ -1710,8 +1710,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				Document.Pages.CurrentPage.OnKeyDown((FWL_VKEYCODE)e.KeyCode, mod);
 			}
-			base.OnKeyDown(e);
+			base.OnPreviewKeyDown(e);
 		}
+
 
 		/// <summary>
 		/// Raises the System.Windows.Forms.Control.KeyUp event.
