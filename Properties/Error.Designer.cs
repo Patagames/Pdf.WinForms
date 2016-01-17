@@ -95,5 +95,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms.Properties {
                 return ResourceManager.GetString("InfoHeader", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Loading....
+        /// </summary>
+        internal static string LoadingText {
+            get {
+                return ResourceManager.GetString("LoadingText", resourceCulture);
+            }
+        }
     }
 }

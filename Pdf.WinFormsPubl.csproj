@@ -55,6 +55,8 @@
       <DependentUpon>NamedDestinationsViewer.cs</DependentUpon>
     </Compile>
     <Compile Include="NamedDestinationsViewerItem.cs" />
+    <Compile Include="PRCollection.cs" />
+    <Compile Include="PRItem.cs" />
     <Compile Include="Properties\Error.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
