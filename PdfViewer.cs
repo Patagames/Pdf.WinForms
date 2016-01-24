@@ -48,6 +48,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private RenderFlags _renderFlags = RenderFlags.FPDF_LCD_TEXT | RenderFlags.FPDF_NO_CATCH;
 		private int _tilesCount;
 		private MouseModes _mouseMode;
+		private bool _showLoadingIcon = true;
+		private bool _useProgressiveRender = true;
+		private string _loadingIconText = Properties.Error.LoadingText;
 
 		private RectangleF[] _renderRects;
 		private int _startPage { get { return ViewMode == ViewModes.SinglePage ? Document.Pages.CurrentIndex : 0; } }
@@ -186,6 +189,22 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Occurs when the value of the <see cref="MouseModes"/> property has changed.
 		/// </summary>
 		public event EventHandler MouseModeChanged;
+
+		/// <summary>
+		/// Occurs when the value of the <see cref="ShowLoadingIcon"/> property has changed.
+		/// </summary>
+		public event EventHandler ShowLoadingIconChanged;
+
+		/// <summary>
+		/// Occurs when the value of the <see cref="UseProgressiveRender"/> property has changed.
+		/// </summary>
+		public event EventHandler UseProgressiveRenderChanged;
+
+		/// <summary>
+		/// Occurs when the value of the <see cref="LoadingIconText"/> property has changed.
+		/// </summary>
+		public event EventHandler LoadingIconTextChanged;
+		
 
 		#endregion
 
@@ -442,6 +461,36 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (MouseModeChanged != null)
 				MouseModeChanged(this, e);
 		}
+
+		/// <summary>
+		/// Raises the <see cref="ShowLoadingIconChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		protected virtual void OnShowLoadingIconChanged(EventArgs e)
+		{
+			if (ShowLoadingIconChanged != null)
+				ShowLoadingIconChanged(this, e);
+		}
+
+		/// <summary>
+		/// Raises the <see cref="UseProgressiveRenderChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		protected virtual void OnUseProgressiveRenderChanged(EventArgs e)
+		{
+			if (UseProgressiveRenderChanged != null)
+				UseProgressiveRenderChanged(this, e);
+		}
+
+		/// <summary>
+		/// Raises the <see cref="LoadingIconTextChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		protected virtual void OnLoadingIconTextChanged(EventArgs e)
+		{
+			if (LoadingIconTextChanged != null)
+				LoadingIconTextChanged(this, e);
+		}
 		#endregion
 
 		#region Public properties
@@ -477,7 +526,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 						_document.Pages.PageDeleted += Pages_PageDeleted;
 						_document.Pages.ProgressiveRender += Pages_ProgressiveRender;
 						SetCurrentPage(_onstartPageIndex);
-						if(_document.Pages.Count>0)
+						if (_document.Pages.Count > 0)
 							ScrollToPage(_onstartPageIndex);
 						SetupControls();
 						OnDocumentLoaded(EventArgs.Empty);
@@ -663,7 +712,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 					int len = Document.Pages[i].Text.CountChars;
 					if (i == selTmp.EndPage)
-						len = (selTmp.EndIndex+1) - s;
+						len = (selTmp.EndIndex + 1) - s;
 
 					ret += Document.Pages[i].Text.GetText(s, len);
 				}
@@ -822,7 +871,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 			set
 			{
-				if(_pageAlign!= value)
+				if (_pageAlign != value)
 				{
 					_pageAlign = value;
 					UpdateLayout();
@@ -842,7 +891,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 			set
 			{
-				if(_renderFlags!= value)
+				if (_renderFlags != value)
 				{
 					_renderFlags = value;
 					Invalidate();
@@ -850,7 +899,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				}
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets or sets visible page count for tiles view mode
 		/// </summary>
@@ -951,7 +1000,59 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <summary>
 		/// Determines whether the page's loading icon should be shown
 		/// </summary>
-		public bool ShowLoadingIcon { get; set; }
+		public bool ShowLoadingIcon
+		{
+			get
+			{
+				return _showLoadingIcon;
+			}
+			set
+			{
+				if (_showLoadingIcon != value)
+				{
+					_showLoadingIcon = value;
+					OnShowLoadingIconChanged(EventArgs.Empty);
+				}
+			}
+		}
+
+		/// <summary>
+		/// If true the progressive rendering is used for render page
+		/// </summary>
+		public bool UseProgressiveRender
+		{
+			get
+			{
+				return _useProgressiveRender;
+			}
+			set
+			{
+				if (_useProgressiveRender != value)
+				{
+					_useProgressiveRender = value;
+					OnUseProgressiveRenderChanged(EventArgs.Empty);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Gets or sets loading icon text in progressive rendering mode
+		/// </summary>
+		public string LoadingIconText
+		{
+			get
+			{
+				return _loadingIconText;
+			}
+			set
+			{
+				if (_loadingIconText != value)
+				{
+					_loadingIconText = value;
+					OnLoadingIconTextChanged(EventArgs.Empty);
+				}
+			}
+		}
 		#endregion
 
 		#region Public methods
@@ -1421,6 +1522,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			RenderFlags = Enums.RenderFlags.FPDF_ANNOT;
 			TilesCount = 2;
 			ShowLoadingIcon = true;
+			UseProgressiveRender = true;
 
 			InitializeComponent();
 			DoubleBuffered = true;
@@ -1540,7 +1642,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					//Draw page background
 					DrawPageBackColor(e.Graphics, actualRect.X, actualRect.Y, actualRect.Width, actualRect.Height);
 					//Draw page and forms
-					DrawPage(e.Graphics, Document.Pages[i], actualRect);
+					if(UseProgressiveRender)
+						DrawPage(e.Graphics, Document.Pages[i], actualRect);
+					else
+						DrawPageNonProgressive(e.Graphics, Document.Pages[i], actualRect);
 					//Draw page border
 					DrawPageBorder(e.Graphics, actualRect);
 					//Draw fillforms selection
@@ -1833,7 +1938,27 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		}
 
-		private void DrawPageOld(Graphics graphics, PdfPage page, Rectangle actualRect)
+		/// <summary>
+		/// Draws page content and fillforms if <see cref="UseProgressiveRender"/> flag is not set
+		/// </summary>
+		/// <param name="graphics">The drawing surface</param>
+		/// <param name="page">Page to be drawn</param>
+		/// <param name="actualRect">Page bounds in control coordinates</param>
+		/// <remarks>
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawPageBorder"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// </list>
+		/// </remarks>
+		protected virtual void DrawPageNonProgressive(Graphics graphics, PdfPage page, Rectangle actualRect)
 		{
 			if (actualRect.Width <= 0 || actualRect.Height <= 0)
 				return;
@@ -1914,7 +2039,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			StringFormat sf = new StringFormat();
 			sf.Alignment = StringAlignment.Center;
 			sf.LineAlignment = StringAlignment.Center;
-			graphics.DrawString(Properties.Error.LoadingText, _loadingFont, Brushes.Black, actualRect, sf);
+			graphics.DrawString(LoadingIconText, _loadingFont, Brushes.Black, actualRect, sf);
 		}
 
 		/// <summary>

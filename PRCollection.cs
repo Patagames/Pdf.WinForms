@@ -29,10 +29,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <returns>True means that application shoul continue painting.</returns>
 		internal bool IsNeedPause(PdfPage page)
 		{
+			if (!this.ContainsKey(page))
+				return false;
+
 			var currentTicks = DateTime.Now.Ticks;
 			var ms = TimeSpan.FromTicks(currentTicks - this[page].prevTicks).Milliseconds;
 			var ret = ms > this[page].waitTime;
 			this[page].prevTicks = currentTicks;
+			if (ret)
+				this[page].waitTime += 10;
 			return ret;
 		}
 

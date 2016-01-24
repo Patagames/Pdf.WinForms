@@ -171,7 +171,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			pd.QueryPageSettings += (s, e) =>
 			{
 				//Set the paper orientation to Landscape if the page is rotated
-				e.PageSettings.Landscape = e.PageSettings.Landscape;
+				e.PageSettings.Landscape = pd.PrinterSettings.DefaultPageSettings.Landscape;
 				if ((PdfViewer.Document.Pages[pageForPrint].Rotation == PageRotate.Rotate270
 					|| PdfViewer.Document.Pages[pageForPrint].Rotation == PageRotate.Rotate90
 					))
@@ -244,10 +244,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			dlg.Document = pd;
 			if(dlg.ShowDialog()== DialogResult.OK)
 			{
-				pd.Print();
-				//var dlg2 = new PrintPreviewDialog();
-				//dlg2.Document = pd;
-				//dlg2.ShowDialog();
+				//pd.Print();
+				var dlg2 = new PrintPreviewDialog();
+				dlg2.Document = pd;
+				dlg2.ShowDialog();
 			}
 
 
