@@ -104,16 +104,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			dlg.Filter = Properties.PdfToolStrip.OpenDialogFilter;
 			if (dlg.ShowDialog() == DialogResult.OK)
 			{
-				try {
+				try
+				{
 					PdfViewer.LoadDocument(dlg.FileName);
 				}
 				catch (InvalidPasswordException)
 				{
 					string password = OnPasswordRequired();
-					try {
-						PdfViewer.LoadDocument(dlg.FileName);
+					try
+					{
+						PdfViewer.LoadDocument(dlg.FileName, password);
 					}
-					catch(Exception ex)
+					catch (Exception ex)
 					{
 						MessageBox.Show(ex.Message, Properties.Error.ErrorHeader, MessageBoxButtons.OK, MessageBoxIcon.Error);
 					}
