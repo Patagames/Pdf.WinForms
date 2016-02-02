@@ -196,6 +196,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 				ft = _foundedText[currentRecord-1];
 			}
 
+			PdfViewer.CurrentIndex = ft.PageIndex;
 			var page = PdfViewer.Document.Pages[ft.PageIndex];
 			var ti = page.Text.GetTextInfo(ft.CharIndex, 1);
 			if (ti.Rects == null || ti.Rects.Count == 0)
