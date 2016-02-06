@@ -45,27 +45,27 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Start/Continue progressive rendering for specified page
 		/// </summary>
 		/// <param name="page">Pdf page object</param>
-		/// <param name="actualRect">Actual page's rectangle. </param>
+		/// <param name="width">Actual page's width. </param>
+		/// <param name="height">Actual page's height. </param>
 		/// <param name="pageRotate">Page orientation: 0 (normal), 1 (rotated 90 degrees clockwise), 2 (rotated 180 degrees), 3 (rotated 90 degrees counter-clockwise).</param>
 		/// <param name="renderFlags">0 for normal display, or combination of flags defined above.</param>
 		/// <returns>Null if page still painting, PdfBitmap object if page successfully rendered.</returns>
-		internal PdfBitmap RenderPage(PdfPage page, Rectangle actualRect, PageRotate pageRotate, RenderFlags renderFlags)
+		internal PdfBitmap RenderPage(PdfPage page, int width, int height, PageRotate pageRotate, RenderFlags renderFlags)
 		{
 			if (this.ContainsKey(page))
 			{
-				var rc = this[page].actualRect;
-				if (rc.Width != actualRect.Width || rc.Height != actualRect.Height)
+				if (this[page].width != width || this[page].height != height)
 				{
 					//Process page as new if its actual size was changed.
 					PageRemove(page);
-					ProcessNew(page, actualRect);
+					ProcessNew(page, width, height);
 					return null;
 				}
 				//Continue painting for this page
-				return ProcessExisting(page, actualRect, pageRotate, renderFlags);
+				return ProcessExisting(page, width, height, pageRotate, renderFlags);
 			}
 			else
-				ProcessNew(page, actualRect); //Add new page into collection
+				ProcessNew(page, width, height); //Add new page into collection
 
 			return null;
 		}
@@ -74,12 +74,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Process existing pages
 		/// </summary>
 		/// <returns>Null if page still painting, PdfBitmap object if page successfully rendered.</returns>
-		private PdfBitmap ProcessExisting(PdfPage page, Rectangle actualRect, PageRotate pageRotate, RenderFlags renderFlags)
+		private PdfBitmap ProcessExisting(PdfPage page, int width, int height, PageRotate pageRotate, RenderFlags renderFlags)
 		{
 			switch (this[page].status)
 			{
 				case ProgressiveRenderingStatuses.RenderReader:
-					this[page].status = page.StartProgressiveRender(this[page].bmp, 0, 0, actualRect.Width, actualRect.Height, pageRotate, renderFlags, null);
+					this[page].status = page.StartProgressiveRender(this[page].bmp, 0, 0, width, height, pageRotate, renderFlags, null);
 					return null; //Start rendering. Return nothing.
 
 				case ProgressiveRenderingStatuses.RenderDone:
@@ -96,8 +96,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				case ProgressiveRenderingStatuses.RenderFailed:
 				default:
-					this[page].bmp.FillRect(0, 0, actualRect.Width, actualRect.Height, Color.Red);
-					this[page].bmp.FillRect(5, 5, actualRect.Width - 10, actualRect.Height - 10, Color.White);
+					this[page].bmp.FillRect(0, 0, width, height, Color.Red);
+					this[page].bmp.FillRect(5, 5, width - 10, height - 10, Color.White);
 					page.CancelProgressiveRender();
 					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
 					return this[page].bmp; //Error occur. Stop rendering. return image with error
@@ -107,15 +107,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <summary>
 		/// Adds page into collection
 		/// </summary>
-		private void ProcessNew(PdfPage page, Rectangle actualRect)
+		private void ProcessNew(PdfPage page, int width, int height)
 		{
 			var item = new PRItem()
 			{
-				bmp = new PdfBitmap(actualRect.Width, actualRect.Height, true),
+				bmp = new PdfBitmap(width, height, true),
 				status = ProgressiveRenderingStatuses.RenderReader,
 				waitTime = 10,
 				prevTicks = DateTime.Now.Ticks,
-				actualRect = actualRect
+				width = width,
+				height = height
 			};
 			this.Add(page, item);
 			page.Disposed += Page_Disposed;
@@ -131,6 +132,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (this[page].status == ProgressiveRenderingStatuses.RenderTobeContinued)
 					page.CancelProgressiveRender();
 				this[page].bmp.Dispose();
+				page.Disposed -= Page_Disposed;
 				this.Remove(page);
 			}
 		}

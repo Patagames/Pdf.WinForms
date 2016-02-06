@@ -12,7 +12,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 	{
 		#region Private fields
 		PdfSearch search = null;
-		List<PdfSearch.FoundText> _foundedText = new List<PdfSearch.FoundText>();
+		List<PdfSearch.FoundText> _foundText = new List<PdfSearch.FoundText>();
 		List<PdfSearch.FoundText> _forHighlight = new List<PdfSearch.FoundText>();
 		object _syncFoundText = new object();
 		Timer _foundTextTimer;
@@ -20,7 +20,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 		#region Public Properties
 		/// <summary>
-		/// Gets or sets the color of the founded text.
+		/// Gets or sets the color of the found text.
 		/// </summary>
 		Color HighlightColor { get; set; }
 		#endregion
@@ -85,6 +85,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		#endregion
 
 		#region Event handlers for PdfViewer
+		private void PdfViewer_DocumentClosing(object sender, EventArguments.DocumentClosingEventArgs e)
+		{
+			e.Cancel = false;
+			StopSearch();
+		}
+
 		private void PdfViewer_DocumentClosed(object sender, EventArgs e)
 		{
 			UpdateButtons();
@@ -107,12 +113,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			_foundTextTimer_Tick(_foundTextTimer, EventArgs.Empty);
 		}
 
+		int _sleepCnt = 0;
 		private void Search_FoundTextAdded(object sender, EventArguments.FoundTextAddedEventArgs e)
 		{
-            lock (_syncFoundText)
+			lock (_syncFoundText)
 			{
-				_foundedText.Add(e.FoundText);
+				_foundText.Add(e.FoundText);
 				_forHighlight.Add(e.FoundText);
+			}
+			//Give a chance to GUI thread to process the found records.
+			_sleepCnt++;
+			if (_sleepCnt >= 100)
+			{
+				_sleepCnt = 0;
+				System.Threading.Thread.Sleep(10);
 			}
 		}
 
@@ -152,13 +166,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		#region Private methods
 		private void UnsubscribePdfViewEvents(PdfViewer oldValue)
 		{
-			oldValue.DocumentLoaded -= PdfViewer_DocumentClosed;
+			oldValue.DocumentLoaded -= PdfViewer_DocumentLoaded;
+			oldValue.DocumentClosing -= PdfViewer_DocumentClosing;
 			oldValue.DocumentClosed -= PdfViewer_DocumentClosed;
 		}
 
 		private void SubscribePdfViewEvents(PdfViewer newValue)
 		{
 			newValue.DocumentLoaded += PdfViewer_DocumentLoaded;
+			newValue.DocumentClosing += PdfViewer_DocumentClosing;
 			newValue.DocumentClosed += PdfViewer_DocumentClosed;
 		}
 
@@ -177,7 +193,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			search.End();
 			while (search.IsBusy)
 				Application.DoEvents();
-			_foundedText.Clear();
+			_foundText.Clear();
 			_forHighlight.Clear();
 			PdfViewer.RemoveHighlightFromText();
 
@@ -191,9 +207,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			PdfSearch.FoundText ft;
 			lock(_syncFoundText)
 			{
-				if (currentRecord < 1 || currentRecord > _foundedText.Count)
+				if (currentRecord < 1 || currentRecord > _foundText.Count)
 					return;
-				ft = _foundedText[currentRecord-1];
+				ft = _foundText[currentRecord-1];
 			}
 
 			PdfViewer.CurrentIndex = ft.PageIndex;
@@ -216,8 +232,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 				return;
 			lock (_syncFoundText)
 			{
-				tssb.SearchBar.TotalRecords = _foundedText.Count;
-				foreach(var ft in _forHighlight)
+				tssb.SearchBar.TotalRecords = _foundText.Count;
+				foreach (var ft in _forHighlight)
 					PdfViewer.HighlightText(ft.PageIndex, ft.CharIndex, ft.CharsCount, HighlightColor);
 				_forHighlight.Clear();
 			}

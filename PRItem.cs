@@ -9,6 +9,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public ProgressiveRenderingStatuses status;
 		public int waitTime;
 		public long prevTicks;
-		public Rectangle actualRect;
+		public int width;
+		public int height;
 	}
 }

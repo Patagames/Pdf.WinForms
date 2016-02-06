@@ -71,6 +71,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public event EventHandler DocumentLoaded;
 
 		/// <summary>
+		/// Occurs before the document unloads.
+		/// </summary>
+		public event EventHandler<DocumentClosingEventArgs> DocumentClosing;
+
+		/// <summary>
 		/// Occurs whenever the document unloads.
 		/// </summary>
 		public event EventHandler DocumentClosed;
@@ -222,6 +227,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				DocumentLoaded(this, e);
 		}
 
+		/// <summary>
+		/// Raises the <see cref="DocumentClosing"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		/// <returns>True if closing should be canceled, False otherwise</returns>
+		protected virtual bool OnDocumentClosing(DocumentClosingEventArgs e)
+		{
+			if (DocumentClosing != null)
+				DocumentClosing(this, e);
+			return e.Cancel;
+		}
+		
 		/// <summary>
 		/// Raises the <see cref="DocumentClosed"/> event.
 		/// </summary>
@@ -1485,6 +1502,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			if (_document != null)
 			{
+				if (OnDocumentClosing(new DocumentClosingEventArgs()))
+					return;
 				DeselectText();
 				ReleaseControls();
 				_document.Dispose();
@@ -1920,7 +1939,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (actualRect.Width <= 0 || actualRect.Height <= 0)
 				return;
 
-			PdfBitmap bmp = _prPages.RenderPage(page, actualRect, PageRotation(page), RenderFlags);
+			PdfBitmap bmp = _prPages.RenderPage(page, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
 			if (bmp != null)
 			{
 				//Draw fill forms
