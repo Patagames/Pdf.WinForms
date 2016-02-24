@@ -184,13 +184,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			{
 				//Calculate the size of the printable area in pixels
 				var fitSize = new Size(
-					(int)(e.Graphics.DpiX * e.PageSettings.PrintableArea.Width * 0.254 / 25.4f),
-					(int)(e.Graphics.DpiY * e.PageSettings.PrintableArea.Height * 0.254 / 25.4f)
+					(int)(e.Graphics.DpiX * e.PageSettings.PrintableArea.Width / 100),
+					(int)(e.Graphics.DpiY * e.PageSettings.PrintableArea.Height / 100)
 					);
 				//Get page's size
 				var pageSize = new Size(
-					(int)PdfViewer.Document.Pages[pageForPrint].Width, 
-					(int)PdfViewer.Document.Pages[pageForPrint].Height);
+					(int)(PdfViewer.Document.Pages[pageForPrint].Width / 72.0f * e.Graphics.DpiX), 
+					(int)(PdfViewer.Document.Pages[pageForPrint].Height / 72.0f * e.Graphics.DpiY));
 
 				//If page was rotated in original file, then we need to "rotate the paper in printer". 
 				//For that just swap the width and height of the paper.
@@ -246,10 +246,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			dlg.Document = pd;
 			if(dlg.ShowDialog()== DialogResult.OK)
 			{
-				//pd.Print();
-				var dlg2 = new PrintPreviewDialog();
-				dlg2.Document = pd;
-				dlg2.ShowDialog();
+				pd.Print();
+				//var dlg2 = new PrintPreviewDialog();
+				//dlg2.Document = pd;
+				//dlg2.ShowDialog();
 			}
 
 
@@ -283,11 +283,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			w = pageSize.Width;
 			h = pageSize.Height;
 
-			double nw = fitSize.Width;
-			double nh = h * nw / w;
-
-			nh = fitSize.Height;
-			nw = w * nh / h;
+			double nh = fitSize.Height;
+			double nw = w * nh / h;
 			if (nw > fitSize.Width)
 			{
 				nw = fitSize.Width;
