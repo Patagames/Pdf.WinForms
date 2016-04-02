@@ -1081,6 +1081,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			if (Document == null)
 				return;
+			if (Document.Pages.Count == 0)
+				return;
+			if (index < 0 || index > Document.Pages.Count - 1)
+				return;
+
 			if (ViewMode == ViewModes.SinglePage)
 			{
 				SetCurrentPage(index);
@@ -1091,6 +1096,36 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				var rect = RFTR(renderRects(index));
 				AutoScrollPosition = new Point(rect.X, rect.Y);
 			}
+		}
+
+		/// <summary>
+		/// Scrolls the control view to the specified character on the current page
+		/// </summary>
+		/// <param name="charIndex">Character index</param>
+		public void ScrollToChar(int charIndex)
+		{
+			if (Document == null)
+				return;
+			if (Document.Pages.Count == 0)
+				return;
+			var pageIndex = CurrentIndex;
+			if (pageIndex < 0)
+				return;
+			var page = Document.Pages[pageIndex];
+			int cnt = page.Text.CountChars;
+			if (charIndex < 0)
+				charIndex = 0;
+			if (charIndex >= cnt)
+				charIndex = cnt - 1;
+			if (charIndex < 0)
+				return;
+			var ti = page.Text.GetTextInfo(charIndex, 1);
+			if (ti.Rects == null || ti.Rects.Count == 0)
+				return;
+
+			var pt = PageToClient(pageIndex, new PointF(ti.Rects[0].left, ti.Rects[0].top));
+			var curPt = AutoScrollPosition;
+			AutoScrollPosition = new Point(pt.X - curPt.X, pt.Y - curPt.Y);
 		}
 
 		/// <summary>
@@ -1357,6 +1392,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public void UpdateLayout()
 		{
 			OnResize(EventArgs.Empty);
+		}
+
+		/// <summary>
+		/// Clear internal render buffer for rerender pages in Progressive mode
+		/// </summary>
+		public void ClearRenderBuffer()
+		{
+			if (_prPages != null)
+				_prPages.Clear();
 		}
 
 		/// <summary>

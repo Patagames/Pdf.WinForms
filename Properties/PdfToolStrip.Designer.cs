@@ -716,15 +716,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Clear.
-        /// </summary>
-        internal static string menItemClear {
-            get {
-                return ResourceManager.GetString("menItemClear", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Match Case.
         /// </summary>
         internal static string menuItemMatchCase {

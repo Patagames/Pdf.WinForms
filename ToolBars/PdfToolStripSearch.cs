@@ -22,7 +22,22 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		/// <summary>
 		/// Gets or sets the color of the found text.
 		/// </summary>
-		Color HighlightColor { get; set; }
+		public Color HighlightColor { get; set; }
+
+		/// <summary>
+		/// Gets or sets search text
+		/// </summary>
+		public  string SearchText
+		{
+			get
+			{
+				return (this.Items["btnSearchBar"] as ToolStripSearchBar).SearchBar.SearchText;
+			}
+			set
+			{
+				(this.Items["btnSearchBar"] as ToolStripSearchBar).SearchBar.SearchText = value;
+			}
+		}
 		#endregion
 
 		#region Constructors
@@ -80,6 +95,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 				UnsubscribePdfViewEvents(oldValue);
 			if (newValue != null)
 				SubscribePdfViewEvents(newValue);
+
+			if (oldValue != null && oldValue.Document != null && search == null)
+				PdfViewer_DocumentClosed(this, EventArgs.Empty);
+			if (newValue != null && newValue.Document != null && search == null)
+				PdfViewer_DocumentLoaded(this, EventArgs.Empty);
 		}
 
 		#endregion
@@ -213,16 +233,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			}
 
 			PdfViewer.CurrentIndex = ft.PageIndex;
-			var page = PdfViewer.Document.Pages[ft.PageIndex];
-			var ti = page.Text.GetTextInfo(ft.CharIndex, 1);
-			if (ti.Rects == null || ti.Rects.Count == 0)
-			{
-				PdfViewer.ScrollToPage(ft.PageIndex);
-				return;
-			}
-			var pt = PdfViewer.PageToClient(ft.PageIndex, new PointF(ti.Rects[0].left, ti.Rects[0].top));
-			var curPt = PdfViewer.AutoScrollPosition;
-			PdfViewer.AutoScrollPosition = new Point(pt.X - curPt.X, pt.Y - curPt.Y);
+			PdfViewer.ScrollToPage(ft.PageIndex);
+			PdfViewer.ScrollToChar(ft.CharIndex);
 		}
 
 		private void _foundTextTimer_Tick(object sender, EventArgs e)

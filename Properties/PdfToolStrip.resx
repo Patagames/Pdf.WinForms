@@ -342,9 +342,6 @@ Out</value>
   <data name="OpenDialogFilter" xml:space="preserve">
     <value>PDF Files (*.pdf)|*.pdf</value>
   </data>
-  <data name="menItemClear" xml:space="preserve">
-    <value>Clear</value>
-  </data>
   <data name="menuItemMatchCase" xml:space="preserve">
     <value>Match Case</value>
   </data>
