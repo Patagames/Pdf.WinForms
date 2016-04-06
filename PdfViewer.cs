@@ -1583,7 +1583,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			CurrentPageHighlightColor = Color.FromArgb(170, Color.SteelBlue.R, Color.SteelBlue.G, Color.SteelBlue.B);
 			ShowCurrentPageHighlight = true;
 			PageAlign = ContentAlignment.MiddleCenter;
-			RenderFlags = Enums.RenderFlags.FPDF_ANNOT | RenderFlags.FPDF_LCD_TEXT | RenderFlags.FPDF_NO_CATCH;
+			RenderFlags = RenderFlags.FPDF_LCD_TEXT | RenderFlags.FPDF_NO_CATCH;
 			TilesCount = 2;
 			ShowLoadingIcon = true;
 			UseProgressiveRender = true;
