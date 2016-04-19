@@ -224,9 +224,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 					//Set DPI of the image same as the printer's DPI
 					(bmp.Image as Bitmap).SetResolution(e.Graphics.DpiX, e.Graphics.DpiY);
 					//Draw rendered image to printer's graphics surface
-					e.Graphics.DrawImageUnscaled(bmp.Image,
-						(int)e.PageSettings.PrintableArea.X,
-						(int)e.PageSettings.PrintableArea.Y);
+					e.Graphics.DrawImageUnscaled(bmp.Image, 0, 0);
 				}
 
 				//Print next page
