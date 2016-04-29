@@ -49,8 +49,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <param name="height">Actual page's height. </param>
 		/// <param name="pageRotate">Page orientation: 0 (normal), 1 (rotated 90 degrees clockwise), 2 (rotated 180 degrees), 3 (rotated 90 degrees counter-clockwise).</param>
 		/// <param name="renderFlags">0 for normal display, or combination of flags defined above.</param>
+		/// <param name="useProgressiveRender">True for use progressive render</param>
 		/// <returns>Null if page still painting, PdfBitmap object if page successfully rendered.</returns>
-		internal PdfBitmap RenderPage(PdfPage page, int width, int height, PageRotate pageRotate, RenderFlags renderFlags)
+		internal PdfBitmap RenderPage(PdfPage page, int width, int height, PageRotate pageRotate, RenderFlags renderFlags, bool useProgressiveRender)
 		{
 			if (this.ContainsKey(page))
 			{
@@ -59,6 +60,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					//Process page as new if its actual size was changed.
 					PageRemove(page);
 					ProcessNew(page, width, height);
+					if (!useProgressiveRender)
+					{
+						this[page].status = ProgressiveRenderingStatuses.RenderDone + 3;
+						return ProcessExisting(page, width, height, pageRotate, renderFlags);
+					}
 					return null;
 				}
 				//Continue painting for this page
@@ -67,6 +73,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			else
 				ProcessNew(page, width, height); //Add new page into collection
 
+			if (!useProgressiveRender)
+			{
+				this[page].status = ProgressiveRenderingStatuses.RenderDone + 3;
+				return ProcessExisting(page, width, height, pageRotate, renderFlags);
+			}
 			return null;
 		}
 
@@ -89,6 +100,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				case ProgressiveRenderingStatuses.RenderDone + 2:
 					return this[page].bmp; //Rendering already dtoped. return image
+
+				case ProgressiveRenderingStatuses.RenderDone + 3:
+					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
+					page.RenderEx(this[page].bmp, 0, 0, width, height, pageRotate, renderFlags);
+					return this[page].bmp; //Rendering in non progressive mode
 
 				case ProgressiveRenderingStatuses.RenderTobeContinued:
 					this[page].status = page.ContinueProgressiveRender();

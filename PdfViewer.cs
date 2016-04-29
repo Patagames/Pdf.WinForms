@@ -1705,10 +1705,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					//Draw page background
 					DrawPageBackColor(e.Graphics, actualRect.X, actualRect.Y, actualRect.Width, actualRect.Height);
 					//Draw page and forms
-					if(UseProgressiveRender)
-						DrawPage(e.Graphics, Document.Pages[i], actualRect);
-					else
-						DrawPageNonProgressive(e.Graphics, Document.Pages[i], actualRect);
+					DrawPage(e.Graphics, Document.Pages[i], actualRect);
 					//Draw page border
 					DrawPageBorder(e.Graphics, actualRect);
 					//Draw fillforms selection
@@ -1983,7 +1980,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (actualRect.Width <= 0 || actualRect.Height <= 0)
 				return;
 
-			PdfBitmap bmp = _prPages.RenderPage(page, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
+			PdfBitmap bmp = _prPages.RenderPage(page, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags, UseProgressiveRender);
 			if (bmp != null)
 			{
 				var b = bmp.Clone();
@@ -2002,46 +1999,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				StartInvalidateTimer();
 			}
 
-		}
-
-		/// <summary>
-		/// Draws page content and fillforms if <see cref="UseProgressiveRender"/> flag is not set
-		/// </summary>
-		/// <param name="graphics">The drawing surface</param>
-		/// <param name="page">Page to be drawn</param>
-		/// <param name="actualRect">Page bounds in control coordinates</param>
-		/// <remarks>
-		/// Full page rendering is performed in the following order:
-		/// <list type="bullet">
-		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
-		/// <item><see cref="DrawFillForms"/></item>
-		/// <item><see cref="DrawPageBorder"/></item>
-		/// <item><see cref="DrawFillFormsSelection"/></item>
-		/// <item><see cref="DrawTextHighlight"/></item>
-		/// <item><see cref="DrawTextSelection"/></item>
-		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
-		/// </list>
-		/// </remarks>
-		protected virtual void DrawPageNonProgressive(Graphics graphics, PdfPage page, Rectangle actualRect)
-		{
-			if (actualRect.Width <= 0 || actualRect.Height <= 0)
-				return;
-			using (PdfBitmap bmp = new PdfBitmap(actualRect.Width, actualRect.Height, true))
-			{
-				//Draw page content to bitmap
-				page.Render(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
-
-				var b = bmp.Clone();
-				//Draw fill forms
-				DrawFillForms(b, page, actualRect);
-
-				//Draw bitmap to drawing surface
-				graphics.DrawImageUnscaled(b.Image, actualRect.X, actualRect.Y);
-
-				bmp.Dispose();
-			}
 		}
 
 		/// <summary>
