@@ -21,6 +21,11 @@
 		TilesVertical,
 
 		/// <summary>
+		/// Vertical-oriented tiles. The pages are not resizes
+		/// </summary>
+		TilesVerticalNoResize,
+
+		/// <summary>
 		/// Displays the current page
 		/// </summary>
 		SinglePage
