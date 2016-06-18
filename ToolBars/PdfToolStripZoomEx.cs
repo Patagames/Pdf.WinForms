@@ -72,8 +72,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			ToolStripMenuItem item = null;
 			for (int i = ZoomLevel.Length - 1; i >= 0; i--)
 			{
-				item = new ToolStripMenuItem(string.Format("{0}%", ZoomLevel[i]));
-				item.Name = "btnZoomLevel_" + ZoomLevel[i].ToString();
+				item = new ToolStripMenuItem(string.Format("{0:0.00}%", ZoomLevel[i]));
+				item.Name = "btnZoomLevel_" + ZoomLevel[i].ToString().Replace(".", "_").Replace(",", "_");
 				item.Tag = i;
 				item.Click += ZoomLevel_Click;
 				btn.DropDownItems.Add(item);
