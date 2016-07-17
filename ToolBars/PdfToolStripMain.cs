@@ -13,6 +13,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 	/// </summary>
 	public class PdfToolStripMain : PdfToolStrip
 	{
+		#region private members
+		delegate void ShowPrintDialogDelegate(PrintDialog dlg);
+		#endregion
+
 		#region Public events
 		/// <summary>
 		/// Occurs when the loaded document protected by password. Application should return the password through Value property
@@ -141,116 +145,27 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		/// <param name="item">The item that has been clicked</param>
 		protected virtual void OnPrintClick(ToolStripButton item)
 		{
-			//Set up PrintDocument object
-			PrintDocument pd = new PrintDocument();
-			pd.PrinterSettings.MinimumPage = 1;
-			pd.PrinterSettings.MaximumPage = PdfViewer.Document.Pages.Count;
-			pd.PrinterSettings.FromPage = pd.PrinterSettings.MinimumPage;
-			pd.PrinterSettings.ToPage = pd.PrinterSettings.MaximumPage;
-			int pageForPrint = 0;
+			if (PdfViewer.Document.FormFill != null)
+				PdfViewer.Document.FormFill.ForceToKillFocus();
 
-			pd.BeginPrint += (s, e) => 
-			{
-				//Calculate range of pages for print
-				switch(pd.PrinterSettings.PrintRange)
-				{
-					case PrintRange.Selection:
-					case PrintRange.CurrentPage: //Curent page
-						pd.PrinterSettings.FromPage = PdfViewer.Document.Pages.CurrentIndex+1;
-						pd.PrinterSettings.ToPage = PdfViewer.Document.Pages.CurrentIndex+1;
-						break;
-					case PrintRange.SomePages: //The range specified by the user
-						break;
-					default: //All pages
-						pd.PrinterSettings.FromPage = pd.PrinterSettings.MinimumPage;
-						pd.PrinterSettings.ToPage = pd.PrinterSettings.MaximumPage;
-						break;
-				}
-
-				pageForPrint = pd.PrinterSettings.FromPage-1;
-			};
-
-			pd.QueryPageSettings += (s, e) =>
-			{
-				//Set the paper orientation to Landscape if the page is rotated
-				e.PageSettings.Landscape = pd.PrinterSettings.DefaultPageSettings.Landscape;
-				if ((PdfViewer.Document.Pages[pageForPrint].Rotation == PageRotate.Rotate270
-					|| PdfViewer.Document.Pages[pageForPrint].Rotation == PageRotate.Rotate90
-					))
-					e.PageSettings.Landscape = true;
-			};
-
-			pd.PrintPage += (s, e) =>
-			{
-				//Calculate the size of the printable area in pixels
-				var fitSize = new Size(
-					(int)(e.Graphics.DpiX * e.PageSettings.PrintableArea.Width / 100),
-					(int)(e.Graphics.DpiY * e.PageSettings.PrintableArea.Height / 100)
-					);
-				//Get page's size
-				var pageSize = new Size(
-					(int)(PdfViewer.Document.Pages[pageForPrint].Width / 72.0f * e.Graphics.DpiX), 
-					(int)(PdfViewer.Document.Pages[pageForPrint].Height / 72.0f * e.Graphics.DpiY));
-
-				//If page was rotated in original file, then we need to "rotate the paper in printer". 
-				//For that just swap the width and height of the paper.
-				if (PdfViewer.Document.Pages[pageForPrint].OriginalRotation == PageRotate.Rotate270
-					|| PdfViewer.Document.Pages[pageForPrint].OriginalRotation == PageRotate.Rotate90)
-					fitSize = new Size(fitSize.Height, fitSize.Width);
-
-				//Calculate the page's size fitted to the paper's size.  
-				var rSize = GetRenderSize(pageSize, fitSize);
-
-				using (PdfBitmap bmp = new PdfBitmap((int)rSize.Width, (int)rSize.Height, true))
-				{
-					//Render to PdfBitmap using page's Render method with FPDF_PRINTING flag.
-					PdfViewer.Document.Pages[pageForPrint].Render
-						(bmp,
-						0,
-						0,
-						(int)rSize.Width,
-						(int)rSize.Height,
-						PageRotate.Normal,
-						RenderFlags.FPDF_PRINTING | RenderFlags.FPDF_ANNOT);
-
-					//Rotates the PdfBitmap image depending on the orientation of the page
-					if (PageRotation(PdfViewer.Document.Pages[pageForPrint]) == PageRotate.Rotate270)
-						bmp.Image.RotateFlip(System.Drawing.RotateFlipType.Rotate270FlipNone);
-					else if (PageRotation(PdfViewer.Document.Pages[pageForPrint]) == PageRotate.Rotate180)
-						bmp.Image.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
-					else if (PageRotation(PdfViewer.Document.Pages[pageForPrint]) == PageRotate.Rotate90)
-						bmp.Image.RotateFlip(System.Drawing.RotateFlipType.Rotate90FlipNone);
-
-					//Set DPI of the image same as the printer's DPI
-					(bmp.Image as Bitmap).SetResolution(e.Graphics.DpiX, e.Graphics.DpiY);
-					//Draw rendered image to printer's graphics surface
-					e.Graphics.DrawImageUnscaled(bmp.Image, 0, 0);
-				}
-
-				//Print next page
-				if (pageForPrint < pd.PrinterSettings.ToPage-1)
-				{
-					pageForPrint++;
-					e.HasMorePages = true;
-				}
-
-			};
-
-			//Show standard print dilog
+			//Show standard print dialog
+			var printDoc = new PdfPrintDocument(PdfViewer.Document);
 			var dlg = new PrintDialog();
 			dlg.AllowCurrentPage = true;
 			dlg.AllowSomePages = true;
 			dlg.UseEXDialog = true;
-			dlg.Document = pd;
-			if(dlg.ShowDialog()== DialogResult.OK)
-			{
-				pd.Print();
-				//var dlg2 = new PrintPreviewDialog();
-				//dlg2.Document = pd;
-				//dlg2.ShowDialog();
-			}
-
-
+			dlg.Document = printDoc;
+			ShowPrintDialogDelegate showprintdialog = ShowPrintDialog;
+			this.BeginInvoke(showprintdialog, dlg);
+			//this.BeginInvoke(new Action(() =>
+			//{
+			//	if (dlg.ShowDialog() == DialogResult.OK)
+			//	{
+			//		PrintController printController = new StandardPrintController();
+			//		printDoc.PrintController = printController;
+			//		printDoc.Print();
+			//	}
+			//}));
 		}
 		#endregion
 
@@ -267,32 +182,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			newValue.DocumentClosed += PdfViewer_SomethingChanged;
 		}
 
-		private PageRotate PageRotation(PdfPage pdfPage)
+		private static void ShowPrintDialog(PrintDialog dlg)
 		{
-			int rot = pdfPage.Rotation - pdfPage.OriginalRotation;
-			if (rot < 0)
-				rot = 4 + rot;
-			return (PageRotate)rot;
-		}
-
-		private SizeF GetRenderSize(Size pageSize, Size fitSize)
-		{
-			double w, h;
-			w = pageSize.Width;
-			h = pageSize.Height;
-
-			double nh = fitSize.Height;
-			double nw = w * nh / h;
-			if (nw > fitSize.Width)
-			{
-				nw = fitSize.Width;
-				nh = h * nw / w;
-			}
-			return new SizeF((float)nw, (float)nh);
+			if (dlg.ShowDialog() == DialogResult.OK)
+				dlg.Document.Print();
 		}
 		#endregion
-
-
 
 	}
 }

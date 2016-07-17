@@ -56,6 +56,9 @@
     </Compile>
     <Compile Include="NamedDestinationsViewerItem.cs" />
     <Compile Include="PRCollection.cs" />
+    <Compile Include="Print\PdfPrintDocument.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="PRItem.cs" />
     <Compile Include="Properties\Error.Designer.cs">
       <AutoGen>True</AutoGen>
