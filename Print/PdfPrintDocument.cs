@@ -16,8 +16,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		IntPtr _printHandle;
 		IntPtr _docForPrint;
 		bool _useDP;
-		bool _autoRotate = true;
 		#endregion;
+
+		#region Public properties
+		/// <summary>
+		/// Automatically rotate pages when printing
+		/// </summary>
+		public bool AutoRotate { get; set; }
+		#endregion
 
 		#region Constructors, destructors and initialization
 		/// <summary>
@@ -32,6 +38,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 			_pdfDoc = Document;
 			_useDP = (mode==1);
+			AutoRotate = true;
 
 			PrinterSettings.MinimumPage = 1;
 			PrinterSettings.MaximumPage = _pdfDoc.Pages.Count;
@@ -75,7 +82,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 			_pageForPrint = _useDP ? 0 : PrinterSettings.FromPage-1;
 		}
-
 
 		/// <summary>
 		/// Raises the System.Drawing.Printing.PrintDocument.EndPrint event. It is called
@@ -198,9 +204,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			var rot = Pdfium.FPDFPage_GetRotation(currentPage);
 			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
 
-			if (_autoRotate && isRotated)
+			if (AutoRotate && isRotated)
 				fitSize = new SizeF(fitSize.Height, fitSize.Width);
-			else if (!_autoRotate && isLandscape)
+			else if (!AutoRotate && isLandscape)
 				fitSize = new SizeF(fitSize.Height, fitSize.Width);
 
 			var sz = GetRenderSize(pageSize, fitSize);
@@ -213,12 +219,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			var rot = Pdfium.FPDFPage_GetRotation(currentPage);
 			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
 
-			if (_autoRotate && isRotated != isLandscape)
+			if (AutoRotate && isRotated != isLandscape)
 			{
 				double tmp = width;
 				width = height;
 				height = tmp;
-				return PageRotate.Rotate90;
+				return rot == PageRotate.Rotate270 ? PageRotate.Rotate90 : PageRotate.Rotate270;
 			}
 			return PageRotate.Normal;
 		}
