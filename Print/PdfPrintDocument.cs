@@ -17,6 +17,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		IntPtr _docForPrint;
 		IntPtr _currentPage;
 		bool _useDP;
+		bool _autoRotate = false;
 		#endregion;
 
 		#region Constructors, destructors and initialization
@@ -210,7 +211,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				);
 
 			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
-			if ((rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90))
+			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
+
+			if (isRotated)
 				fitSize = new SizeF(fitSize.Height, fitSize.Width);
 
 
