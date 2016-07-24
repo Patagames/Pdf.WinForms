@@ -219,13 +219,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			height = sz.Height;
 		}
 
-		private PageRotate CalcRotation(bool landscape, ref double width, ref double height)
+		private PageRotate CalcRotation(bool isLandscape, ref double width, ref double height)
 		{
 			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
+			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
 
-			if ((rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90) && landscape)
+			if (isRotated && isLandscape)
 				return PageRotate.Normal;
-			else if ((rot == PageRotate.Normal || rot == PageRotate.Rotate180) && !landscape)
+			else if (!isRotated && !isLandscape)
 				return PageRotate.Normal;
 			else
 			{
