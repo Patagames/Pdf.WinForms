@@ -105,13 +105,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				e.Cancel = true;
 				return;
 			}
-
-			//Set the paper orientation to Landscape if the page is rotated
-			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
-			if (rot == PageRotate.Rotate90 || rot == PageRotate.Rotate270)
-				e.PageSettings.Landscape = !PrinterSettings.DefaultPageSettings.Landscape;
-			else
-				e.PageSettings.Landscape = PrinterSettings.DefaultPageSettings.Landscape;
 		}
 
 		/// <summary>
@@ -170,33 +163,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				_currentPage = IntPtr.Zero;
 			}
 		}
-
-		private void CalcSize(double dpiX, double dpiY, RectangleF printableArea, out double width, out double height)
-		{
-			width = Pdfium.FPDF_GetPageWidth(_currentPage) / 72 * dpiX;
-			height = Pdfium.FPDF_GetPageHeight(_currentPage) / 72 * dpiY;
-			if (_useDP)
-				return;
-
-			//Calculate the size of the printable area in pixels
-			var fitSize = new SizeF(
-				(float)dpiX * printableArea.Width / 100.0f,
-				(float)dpiY * printableArea.Height / 100.0f
-				);
-			var pageSize = new SizeF(
-				(float)width, 
-				(float)height
-				);
-
-			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
-			if ((rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90))
-				fitSize = new SizeF(fitSize.Height, fitSize.Width);
-
-
-				var sz = GetRenderSize(pageSize, fitSize);
-			width = sz.Width;
-			height = sz.Height;
-		}
 		#endregion
 
 		#region Private methods
@@ -224,6 +190,33 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				return IntPtr.Zero;
 
 			return _docForPrint;
+		}
+
+		private void CalcSize(double dpiX, double dpiY, RectangleF printableArea, out double width, out double height)
+		{
+			width = Pdfium.FPDF_GetPageWidth(_currentPage) / 72 * dpiX;
+			height = Pdfium.FPDF_GetPageHeight(_currentPage) / 72 * dpiY;
+			if (_useDP)
+				return;
+
+			//Calculate the size of the printable area in pixels
+			var fitSize = new SizeF(
+				(float)dpiX * printableArea.Width / 100.0f,
+				(float)dpiY * printableArea.Height / 100.0f
+				);
+			var pageSize = new SizeF(
+				(float)width,
+				(float)height
+				);
+
+			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
+			if ((rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90))
+				fitSize = new SizeF(fitSize.Height, fitSize.Width);
+
+
+			var sz = GetRenderSize(pageSize, fitSize);
+			width = sz.Width;
+			height = sz.Height;
 		}
 
 		private PageRotate CalcRotation(bool landscape, ref double width, ref double height)
