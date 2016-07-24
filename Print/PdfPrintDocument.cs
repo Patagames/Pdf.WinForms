@@ -15,9 +15,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		int _pageForPrint;
 		IntPtr _printHandle;
 		IntPtr _docForPrint;
-		IntPtr _currentPage;
 		bool _useDP;
-		bool _autoRotate = false;
+		bool _autoRotate = true;
 		#endregion;
 
 		#region Constructors, destructors and initialization
@@ -93,22 +92,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
-		/// Raises the QueryPageSettings event. It is called immediately before each PrintPage event.
-		/// </summary>
-		/// <param name="e">A System.Drawing.Printing.QueryPageSettingsEventArgs that contains the event data.</param>
-		protected override void OnQueryPageSettings(QueryPageSettingsEventArgs e)
-		{
-			base.OnQueryPageSettings(e);
-
-			_currentPage = Pdfium.FPDF_LoadPage(_docForPrint, _pageForPrint);
-			if (_currentPage == IntPtr.Zero)
-			{
-				e.Cancel = true;
-				return;
-			}
-		}
-
-		/// <summary>
 		/// Raises the System.Drawing.Printing.PrintDocument.PrintPage event. It is called
 		/// before a page prints.
 		/// </summary>
@@ -118,12 +101,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			base.OnPrintPage(e);
 
 			IntPtr hdc = IntPtr.Zero;
+			IntPtr currentPage = IntPtr.Zero;
 			try
 			{
 				if (e.Cancel)
 					return;
 
-				if (_currentPage == IntPtr.Zero)
+				currentPage = Pdfium.FPDF_LoadPage(_docForPrint, _pageForPrint);
+				if (currentPage == IntPtr.Zero)
 				{
 					e.Cancel = true;
 					return;
@@ -133,13 +118,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				double dpiY = e.Graphics.DpiY;
 
 				double width, height;
-				CalcSize(dpiX, dpiY, e.PageSettings.PrintableArea, e.PageSettings.Landscape, out width, out height);
-				PageRotate rotation = CalcRotation(e.PageSettings.Landscape, ref width, ref height);
+				CalcSize(currentPage, dpiX, dpiY, e.PageSettings.PrintableArea, e.PageSettings.Landscape, out width, out height);
+				PageRotate rotation = CalcRotation(currentPage, e.PageSettings.Landscape, ref width, ref height);
 
 				hdc = e.Graphics.GetHdc();
 				Pdfium.FPDF_RenderPage(
 					hdc,
-					_currentPage,
+					currentPage,
 					0,
 					0,
 					(int)(width),
@@ -159,9 +144,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (hdc != IntPtr.Zero)
 					e.Graphics.ReleaseHdc(hdc);
 				hdc = IntPtr.Zero;
-				if (_currentPage != IntPtr.Zero)
-					Pdfium.FPDF_ClosePage(_currentPage);
-				_currentPage = IntPtr.Zero;
+				if (currentPage != IntPtr.Zero)
+					Pdfium.FPDF_ClosePage(currentPage);
+				currentPage = IntPtr.Zero;
 			}
 		}
 		#endregion
@@ -193,10 +178,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return _docForPrint;
 		}
 
-		private void CalcSize(double dpiX, double dpiY, RectangleF printableArea, bool isLandscape, out double width, out double height)
+		private void CalcSize(IntPtr currentPage, double dpiX, double dpiY, RectangleF printableArea, bool isLandscape, out double width, out double height)
 		{
-			width = Pdfium.FPDF_GetPageWidth(_currentPage) / 72 * dpiX;
-			height = Pdfium.FPDF_GetPageHeight(_currentPage) / 72 * dpiY;
+			width = Pdfium.FPDF_GetPageWidth(currentPage) / 72 * dpiX;
+			height = Pdfium.FPDF_GetPageHeight(currentPage) / 72 * dpiY;
 			if (_useDP)
 				return;
 
@@ -210,7 +195,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				(float)height
 				);
 
-			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
+			var rot = Pdfium.FPDFPage_GetRotation(currentPage);
 			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
 
 			if (_autoRotate && isRotated)
@@ -223,9 +208,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			height = sz.Height;
 		}
 
-		private PageRotate CalcRotation(bool isLandscape, ref double width, ref double height)
+		private PageRotate CalcRotation(IntPtr currentPage, bool isLandscape, ref double width, ref double height)
 		{
-			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
+			var rot = Pdfium.FPDFPage_GetRotation(currentPage);
 			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
 
 			if (_autoRotate && isRotated != isLandscape)
