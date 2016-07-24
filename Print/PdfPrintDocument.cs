@@ -133,7 +133,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				double dpiY = e.Graphics.DpiY;
 
 				double width, height;
-				CalcSize(dpiX, dpiY, e.PageSettings.PrintableArea, out width, out height);
+				CalcSize(dpiX, dpiY, e.PageSettings.PrintableArea, e.PageSettings.Landscape, out width, out height);
 				PageRotate rotation = CalcRotation(e.PageSettings.Landscape, ref width, ref height);
 
 				hdc = e.Graphics.GetHdc();
@@ -193,7 +193,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return _docForPrint;
 		}
 
-		private void CalcSize(double dpiX, double dpiY, RectangleF printableArea, out double width, out double height)
+		private void CalcSize(double dpiX, double dpiY, RectangleF printableArea, bool isLandscape, out double width, out double height)
 		{
 			width = Pdfium.FPDF_GetPageWidth(_currentPage) / 72 * dpiX;
 			height = Pdfium.FPDF_GetPageHeight(_currentPage) / 72 * dpiY;
@@ -213,9 +213,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
 			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
 
-			if (isRotated)
+			if (_autoRotate && isRotated)
 				fitSize = new SizeF(fitSize.Height, fitSize.Width);
-
+			else if (!_autoRotate && isLandscape)
+				fitSize = new SizeF(fitSize.Height, fitSize.Width);
 
 			var sz = GetRenderSize(pageSize, fitSize);
 			width = sz.Width;
@@ -227,17 +228,25 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			var rot = Pdfium.FPDFPage_GetRotation(_currentPage);
 			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
 
-			if (isRotated && isLandscape)
+			if (isRotated && isLandscape && _autoRotate)
 				return PageRotate.Normal;
-			else if (!isRotated && !isLandscape)
+			else if (!isRotated && !isLandscape && _autoRotate)
 				return PageRotate.Normal;
-			else
+			else if (!isRotated && !isLandscape && !_autoRotate)
+				return PageRotate.Normal;
+			else if (isRotated && isLandscape && !_autoRotate)
+				return PageRotate.Normal;
+			else if (!isRotated && isLandscape && !_autoRotate)
+				return PageRotate.Normal;
+			else if (_autoRotate)
 			{
 				double tmp = width;
 				width = height;
 				height = tmp;
 				return PageRotate.Rotate90;
 			}
+			else
+				return PageRotate.Normal;
 		}
 
 		private SizeF GetRenderSize(SizeF pageSize, SizeF fitSize)
