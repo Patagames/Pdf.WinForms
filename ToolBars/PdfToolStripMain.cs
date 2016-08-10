@@ -1,9 +1,7 @@
-﻿using Patagames.Pdf.Enums;
-using Patagames.Pdf.Net.EventArguments;
+﻿using Patagames.Pdf.Net.EventArguments;
 using Patagames.Pdf.Net.Exceptions;
 using System;
-using System.Drawing;
-using System.Drawing.Printing;
+using System.ComponentModel;
 using System.Windows.Forms;
 
 namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
@@ -20,8 +18,24 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		#region Public events
 		/// <summary>
 		/// Occurs when the loaded document protected by password. Application should return the password through Value property
-		/// </summary>1
+		/// </summary>
 		public event EventHandler<EventArgs<string>> PasswordRequired = null;
+
+		/// <summary>
+		/// Occurs after an instance of PdfPrintDocument class is created and before printing is started.
+		/// </summary>
+		/// <remarks>
+		/// You can use this event to get access to PdfPrintDialog which is used in printing routine.
+		/// For example, the printing routine shows the standard dialog with printing progress. 
+		/// If you want to suppress it you can write in event handler the following:
+		/// <code>
+		/// private void ToolbarMain1_PdfPrintDocumentCreated(object sender, EventArgs&lt;PdfPrintDocument&gt; e)
+		/// {
+		///		e.Value.PrintController = new StandardPrintController();
+		/// }
+		/// </code>
+		/// </remarks>
+		public event EventHandler<EventArgs<PdfPrintDocument>> PdfPrintDocumentCreated = null;
 		#endregion
 
 		#region Overriding
@@ -155,6 +169,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			dlg.AllowSomePages = true;
 			dlg.UseEXDialog = true;
 			dlg.Document = printDoc;
+			OnPdfPrinDocumentCreaded(new EventArgs<PdfPrintDocument>(printDoc));
 			ShowPrintDialogDelegate showprintdialog = ShowPrintDialog;
 			this.BeginInvoke(showprintdialog, dlg);
 			//this.BeginInvoke(new Action(() =>
@@ -166,6 +181,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			//		printDoc.Print();
 			//	}
 			//}));
+		}
+
+		/// <summary>
+		/// Occurs after an instance of PdfPrintDocument class is created and before printing is started.
+		/// </summary>
+		protected virtual void OnPdfPrinDocumentCreaded(EventArgs<PdfPrintDocument> e)
+		{
+			if (PdfPrintDocumentCreated != null)
+				PdfPrintDocumentCreated(this, e);
 		}
 		#endregion
 
@@ -185,7 +209,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		private static void ShowPrintDialog(PrintDialog dlg)
 		{
 			if (dlg.ShowDialog() == DialogResult.OK)
-				dlg.Document.Print();
+			{
+				try
+				{
+					dlg.Document.Print();
+				}
+				catch (Win32Exception)
+				{
+					//Printing was canceled
+				}
+			}
 		}
 		#endregion
 
