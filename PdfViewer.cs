@@ -56,8 +56,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private string _loadingIconText = Properties.Error.LoadingText;
 
 		private RectangleF[] _renderRects;
-		private int _startPage { get { return ViewMode == ViewModes.SinglePage ? Document.Pages.CurrentIndex : 0; } }
-		private int _endPage { get { return ViewMode == ViewModes.SinglePage ? Document.Pages.CurrentIndex : (_renderRects != null ? _renderRects.Length - 1 : -1); } }
+		private int _startPage { get { return Document == null ? 0 : (ViewMode == ViewModes.SinglePage ? Document.Pages.CurrentIndex : 0); } }
+		private int _endPage { get { return Document == null ? -1 : (ViewMode == ViewModes.SinglePage ? Document.Pages.CurrentIndex : (_renderRects != null ? _renderRects.Length - 1 : -1)); } }
 
 		private PRCollection _prPages = new PRCollection();
 		private Timer _invalidateTimer = null;
@@ -1411,6 +1411,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		public void UpdateLayout()
 		{
+			_prPages.ReleaseCanvas(); //something changed. Release canvas
 			OnResize(EventArgs.Empty);
 		}
 
@@ -1714,6 +1715,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				//For store coordinates of pages separators
 				var separator = new List<Point>();
 
+				//Initialize the Canvas bitmap
+				_prPages.InitCanvas(ClientSize);
+				bool allPagesAreRendered = true;
+
 				//starting draw pages in vertical or horizontal modes
 				for (int i = _startPage; i <= _endPage; i++)
 				{
@@ -1728,7 +1733,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					//Draw page background
 					DrawPageBackColor(e.Graphics, actualRect.X, actualRect.Y, actualRect.Width, actualRect.Height);
 					//Draw page and forms
-					DrawPage(e.Graphics, Document.Pages[i], actualRect);
+					allPagesAreRendered &= DrawPage(e.Graphics, Document.Pages[i], actualRect);
 					//Draw page border
 					DrawPageBorder(e.Graphics, actualRect);
 					//Draw fillforms selection
@@ -1746,6 +1751,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				//Draw pages separators
 				DrawPageSeparators(e.Graphics, ref separator);
+
+				//Draw Canvas bitmap
+				e.Graphics.DrawImageUnscaled(_prPages.CanvasBitmap.Image, 0, 0);
+
+				if (!allPagesAreRendered)
+					StartInvalidateTimer();
+				else
+					_prPages.ReleaseCanvas();
 
 				_selectedRectangles.Clear();
 			}
@@ -1998,28 +2011,22 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
-		protected virtual void DrawPage(Graphics graphics, PdfPage page, Rectangle actualRect)
+		protected virtual bool DrawPage(Graphics graphics, PdfPage page, Rectangle actualRect)
 		{
 			if (actualRect.Width <= 0 || actualRect.Height <= 0)
-				return;
+				return true;
 
-			PdfBitmap bmp = _prPages.RenderPage(page, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags, UseProgressiveRender);
-			if (bmp != null)
+			if (_prPages.RenderPage(page, actualRect, PageRotation(page), RenderFlags, UseProgressiveRender))
 			{
-				var b = bmp.Clone();
 				//Draw fill forms
-				DrawFillForms(b, page, actualRect);
-
-				//Draw bitmap to drawing surface
-				graphics.DrawImageUnscaled(b.Image, actualRect.X, actualRect.Y);
-
-				b.Dispose();
+				DrawFillForms(_prPages.CanvasBitmap, page, actualRect);
+				return true;
 			}
 			else
 			{
 				if(ShowLoadingIcon)
 					DrawLoadingIcon(graphics, page, actualRect);
-				StartInvalidateTimer();
+				return false;
 			}
 
 		}
@@ -2047,7 +2054,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		protected virtual void DrawFillForms(PdfBitmap bmp, PdfPage page, Rectangle actualRect)
 		{
 			//Draw fillforms to bitmap
-			page.RenderForms(bmp, 0, 0, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
+			page.RenderForms(bmp, actualRect.X, actualRect.Y, actualRect.Width, actualRect.Height, PageRotation(page), RenderFlags);
 		}
 
 		/// <summary>
