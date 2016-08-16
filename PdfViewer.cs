@@ -1633,16 +1633,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <param name="e">A System.Windows.Forms.MouseEventArgs that contains the event data.</param>
 		protected override void OnMouseWheel(MouseEventArgs e)
 		{
-			if (Document != null)
-			{
-				int idx = CalcCurrentPage();
-				if (idx >= 0)
-				{
-					SetCurrentPage(idx);
-					Invalidate();
-				}
-			}
-
+			OnScrollView();
 			base.OnMouseWheel(e);
 		}
 
@@ -1652,16 +1643,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <param name="se">A System.Windows.Forms.ScrollEventArgs that contains the event data.</param>
 		protected override void OnScroll(ScrollEventArgs se)
 		{
-			if (Document != null)
-			{
-				int idx = CalcCurrentPage();
-				if (idx >= 0)
-				{
-					SetCurrentPage(idx);
-					Invalidate();
-				}
-			}
-
+			OnScrollView();
 			base.OnScroll(se);
 		}
 
@@ -1673,6 +1655,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			if (Document != null)
 			{
+				_prPages.ReleaseCanvas();
 				SizeF size;
 				switch (ViewMode)
 				{
@@ -2281,6 +2264,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		#endregion
 
 		#region Private methods
+		private void OnScrollView()
+		{
+			if (Document != null)
+			{
+				_prPages.ReleaseCanvas();
+				int idx = CalcCurrentPage();
+				if (idx >= 0)
+				{
+					SetCurrentPage(idx);
+					Invalidate();
+				}
+			}
+		}
+
 		private void ProcessLinkClicked(PdfLink pdfLink, PdfWebLink webLink)
 		{
 			var args = new PdfBeforeLinkClickedEventArgs(webLink, pdfLink);

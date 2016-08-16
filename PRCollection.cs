@@ -8,8 +8,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 	internal class PRCollection : Dictionary<PdfPage, PRItem>
 	{
 		private PdfBitmap _canvasBitmap = null;
-		public int _waitTime;
-		public long _prevTicks;
+		private int _waitTime;
+		private long _prevTicks;
 
 		public void InitCanvas(Size size)
 		{
