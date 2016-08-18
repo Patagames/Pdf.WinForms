@@ -11,6 +11,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private int _waitTime;
 		private long _prevTicks;
 
+		public PdfBitmap CanvasBitmap { get { return _canvasBitmap; } }
+
 		public void InitCanvas(Size size)
 		{
 			if (_canvasBitmap == null)
@@ -21,15 +23,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		public void ReleaseCanvas()
 		{
-			if (_canvasBitmap != null)
-				_canvasBitmap.Dispose();
-			_canvasBitmap = null;
 			foreach (var i in this)
 				ReleasePage(i.Key);
 			this.Clear();
+			if (_canvasBitmap != null)
+				_canvasBitmap.Dispose();
+			_canvasBitmap = null;
 		}
-
-		public PdfBitmap CanvasBitmap { get { return _canvasBitmap; } }
 
 		/// <summary>
 		/// Checks whether all visible pages are rendered
