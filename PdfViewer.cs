@@ -1124,11 +1124,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <param name="charIndex">Character index</param>
 		public void ScrollToChar(int charIndex)
 		{
+			ScrollToChar(CurrentIndex, charIndex);
+		}
+
+		/// <summary>
+		/// Scrolls the control view to the specified character on the specified page
+		/// </summary>
+		/// <param name="charIndex">Character index</param>
+		/// <param name="pageIndex">Zero-based index of a page.</param>
+		public void ScrollToChar(int pageIndex, int charIndex)
+		{
 			if (Document == null)
 				return;
 			if (Document.Pages.Count == 0)
 				return;
-			var pageIndex = CurrentIndex;
 			if (pageIndex < 0)
 				return;
 			var page = Document.Pages[pageIndex];
@@ -1143,7 +1152,30 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (ti.Rects == null || ti.Rects.Count == 0)
 				return;
 
+			if (pageIndex != CurrentIndex)
+				ScrollToPage(pageIndex);
 			var pt = PageToClient(pageIndex, new PointF(ti.Rects[0].left, ti.Rects[0].top));
+			var curPt = AutoScrollPosition;
+			AutoScrollPosition = new Point(pt.X - curPt.X, pt.Y - curPt.Y);
+		}
+
+		/// <summary>
+		/// Scrolls the control view to the specified point on the specified page
+		/// </summary>
+		/// <param name="pageIndex">Zero-based index of a page.</param>
+		/// <param name="pagePoint">Point on the page in the page's coordinate system</param>
+		public void ScrollToPoint(int pageIndex, PointF pagePoint)
+		{
+			if (Document == null)
+				return;
+			int count = Document.Pages.Count;
+			if (count == 0)
+				return;
+			if (pageIndex < 0 || pageIndex > count - 1)
+				return;
+
+			ScrollToPage(pageIndex);
+			var pt = PageToClient(pageIndex, pagePoint);
 			var curPt = AutoScrollPosition;
 			AutoScrollPosition = new Point(pt.X - curPt.X, pt.Y - curPt.Y);
 		}
@@ -1412,7 +1444,42 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public void UpdateLayout()
 		{
 			_prPages.ReleaseCanvas(); //something changed. Release canvas
-			OnResize(EventArgs.Empty);
+
+			if (Document == null)
+				return;
+
+			var pagePoint = new PointF(0, 0);
+			bool needToScroll = false;
+			if (_renderRects != null)
+			{
+				pagePoint = ClientToPage(CurrentIndex, new Point(0, 0));
+				needToScroll = true;
+			}
+
+			SizeF size;
+			switch (ViewMode)
+			{
+				case ViewModes.Vertical:
+					size = CalcVertical();
+					break;
+				case ViewModes.Horizontal:
+					size = CalcHorizontal();
+					break;
+				case ViewModes.TilesVertical:
+					size = CalcTilesVertical();
+					break;
+				default:
+					size = CalcSingle();
+					break;
+			}
+
+			if (size.Width != 0 && size.Height != 0)
+			{
+				AutoScrollMinSize = new Size((int)size.Width, (int)size.Height);
+				Invalidate();
+			}
+			if(needToScroll)
+				ScrollToPoint(CurrentIndex, pagePoint);
 		}
 
 		/// <summary>
@@ -1653,34 +1720,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <param name="e">An System.EventArgs that contains the event data.</param>
 		protected override void OnResize(EventArgs e)
 		{
-			if (Document != null)
-			{
-				_prPages.ReleaseCanvas();
-				SizeF size;
-				switch (ViewMode)
-				{
-					case ViewModes.Vertical:
-						size = CalcVertical();
-						break;
-					case ViewModes.Horizontal:
-						size = CalcHorizontal();
-						break;
-					case ViewModes.TilesVertical:
-						size = CalcTilesVertical();
-						break;
-					default:
-						size = CalcSingle();
-						break;
-				}
-
-				if (size.Width != 0 && size.Height != 0)
-				{
-					AutoScrollMinSize = new Size((int)size.Width, (int)size.Height);
-					Invalidate();
-				}
-			}
-			if(ViewMode!= ViewModes.SinglePage)
-				ScrollToPage(CurrentIndex);
+			UpdateLayout();
 			base.OnResize(e);
 		}
 
