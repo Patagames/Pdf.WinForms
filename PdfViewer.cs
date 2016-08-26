@@ -1742,7 +1742,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				_prPages.InitCanvas(ClientSize);
 				bool allPagesAreRendered = true;
 
-				//starting draw pages in vertical or horizontal modes
+				//Drawing PART 1. Page content into canvas and some other things
 				for (int i = _startPage; i <= _endPage; i++)
 				{
 					//Actual coordinates of the page with the scroll
@@ -1757,6 +1757,24 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					DrawPageBackColor(e.Graphics, actualRect.X, actualRect.Y, actualRect.Width, actualRect.Height);
 					//Draw page and forms
 					allPagesAreRendered &= DrawPage(e.Graphics, Document.Pages[i], actualRect);
+					//Calc coordinates for page separator
+					CalcPageSeparator(actualRect, i, ref separator);
+				}
+
+				//Draw Canvas bitmap
+				e.Graphics.DrawImageUnscaled(_prPages.CanvasBitmap.Image, 0, 0);
+
+				//Draw pages separators
+				DrawPageSeparators(e.Graphics, ref separator);
+
+				//Drawing PART 2.
+				for (int i = _startPage; i <= _endPage; i++)
+				{
+					//Actual coordinates of the page with the scroll
+					Rectangle actualRect = CalcActualRect(i);
+					if (!actualRect.IntersectsWith(ClientRectangle))
+						continue; //Page is invisible. Skip it
+
 					//Draw page border
 					DrawPageBorder(e.Graphics, actualRect);
 					//Draw fillforms selection
@@ -1768,15 +1786,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					DrawTextSelection(e.Graphics, selTmp, i);
 					//Draw current page highlight
 					DrawCurrentPageHighlight(e.Graphics, i, actualRect);
-					//Calc coordinates for page separator
-					CalcPageSeparator(actualRect, i, ref separator);
 				}
-
-				//Draw pages separators
-				DrawPageSeparators(e.Graphics, ref separator);
-
-				//Draw Canvas bitmap
-				e.Graphics.DrawImageUnscaled(_prPages.CanvasBitmap.Image, 0, 0);
 
 				if (!allPagesAreRendered)
 					StartInvalidateTimer();
