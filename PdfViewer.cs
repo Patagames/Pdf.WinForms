@@ -62,13 +62,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private PRCollection _prPages = new PRCollection();
 		private Timer _invalidateTimer = null;
 		private Font _loadingFont = new Font("Tahoma", 10);
-		#endregion
 
-		#region Events
-		/// <summary>
-		/// Occurs whenever the document loads.
-		/// </summary>
-		public event EventHandler DocumentLoaded;
+		private bool _skipOnResize = false;
+        #endregion
+
+        #region Events
+        /// <summary>
+        /// Occurs whenever the document loads.
+        /// </summary>
+        public event EventHandler DocumentLoaded;
 
 		/// <summary>
 		/// Occurs before the document unloads.
@@ -1066,6 +1068,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			{
 				if (_useProgressiveRender != value)
 				{
+					UpdateLayout();
 					_useProgressiveRender = value;
 					OnUseProgressiveRenderChanged(EventArgs.Empty);
 				}
@@ -1108,13 +1111,17 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 			if (ViewMode == ViewModes.SinglePage)
 			{
-				SetCurrentPage(index);
+				if (index != CurrentIndex)
+				{
+					SetCurrentPage(index);
+					_prPages.ReleaseCanvas();
+				}
 				Invalidate();
 			}
 			else
 			{
 				var rect = RFTR(_renderRects[index]);
-				AutoScrollPosition = new Point(rect.X, rect.Y);
+                SetScrollPos(rect.X, rect.Y);
 			}
 		}
 
@@ -1152,11 +1159,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (ti.Rects == null || ti.Rects.Count == 0)
 				return;
 
-			if (pageIndex != CurrentIndex)
-				ScrollToPage(pageIndex);
+			ScrollToPage(pageIndex);
 			var pt = PageToClient(pageIndex, new PointF(ti.Rects[0].left, ti.Rects[0].top));
 			var curPt = AutoScrollPosition;
-			AutoScrollPosition = new Point(pt.X - curPt.X, pt.Y - curPt.Y);
+            SetScrollPos(pt.X - curPt.X, pt.Y - curPt.Y);
 		}
 
 		/// <summary>
@@ -1174,10 +1180,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (pageIndex < 0 || pageIndex > count - 1)
 				return;
 
-			ScrollToPage(pageIndex);
-			var pt = PageToClient(pageIndex, pagePoint);
+            ScrollToPage(pageIndex);
+            var pt = PageToClient(pageIndex, pagePoint);
 			var curPt = AutoScrollPosition;
-			AutoScrollPosition = new Point(pt.X - curPt.X, pt.Y - curPt.Y);
+            SetScrollPos(pt.X - curPt.X, pt.Y - curPt.Y);
 		}
 
 		/// <summary>
@@ -1470,25 +1476,28 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					break;
 				default:
 					size = CalcSingle();
+					AdjustFormScrollbars(true); //It's need to prevent the bug with scrollbar
 					break;
 			}
 
 			if (size.Width != 0 && size.Height != 0)
 			{
-				AutoScrollMinSize = new Size((int)size.Width, (int)size.Height);
-				Invalidate();
+				_skipOnResize = true;
+				SetScrollExtent((int)size.Width, (int)size.Height);
+				_skipOnResize = false;
+				AdjustFormScrollbars(true);
+                Invalidate();
 			}
 			if(needToScroll)
 				ScrollToPoint(CurrentIndex, pagePoint);
 		}
-
+       
 		/// <summary>
 		/// Clear internal render buffer for rerender pages in Progressive mode
 		/// </summary>
 		public void ClearRenderBuffer()
 		{
-			if (_prPages != null)
-				_prPages.Clear();
+			_prPages.ReleaseCanvas();
 		}
 
 		/// <summary>
@@ -1646,7 +1655,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			_renderRects = null;
 			_document = null;
 			_onstartPageIndex = 0;
-			AutoScrollMinSize = new Size(0, 0);
+            SetScrollExtent(0, 0);
 			Invalidate();
 
 		}
@@ -1693,15 +1702,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 		#endregion
 
-		#region Overrides
+		#region Overrides for  scrolling
 		/// <summary>
 		/// Raises the System.Windows.Forms.Control.MouseWheel event.
 		/// </summary>
 		/// <param name="e">A System.Windows.Forms.MouseEventArgs that contains the event data.</param>
 		protected override void OnMouseWheel(MouseEventArgs e)
 		{
-			OnScrollView();
+			CalcAndSetCurrentPage();
+			var pos = AutoScrollPosition;
 			base.OnMouseWheel(e);
+			if(pos!= AutoScrollPosition)
+				_prPages.ReleaseCanvas();
 		}
 
 		/// <summary>
@@ -1710,16 +1722,41 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <param name="se">A System.Windows.Forms.ScrollEventArgs that contains the event data.</param>
 		protected override void OnScroll(ScrollEventArgs se)
 		{
-			OnScrollView();
+			CalcAndSetCurrentPage();
+			if(se.OldValue!= se.NewValue)
+				_prPages.ReleaseCanvas();
 			base.OnScroll(se);
 		}
 
+		/// <summary>
+		///  Gets or sets the location of the auto-scroll position.
+		/// </summary>
+		public new Point AutoScrollPosition
+		{
+			get
+			{
+				return base.AutoScrollPosition;
+			}
+			set
+			{
+				var prev = base.AutoScrollPosition;
+				base.AutoScrollPosition = value;
+				if(prev!= base.AutoScrollPosition)
+					_prPages.ReleaseCanvas();
+			}
+		}
+		#endregion
+
+		#region Overrides
 		/// <summary>
 		/// Raises the Resize event
 		/// </summary>
 		/// <param name="e">An System.EventArgs that contains the event data.</param>
 		protected override void OnResize(EventArgs e)
 		{
+			if (_skipOnResize)
+				return;
+
 			UpdateLayout();
 			base.OnResize(e);
 		}
@@ -1756,13 +1793,21 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					//Draw page background
 					DrawPageBackColor(e.Graphics, actualRect.X, actualRect.Y, actualRect.Width, actualRect.Height);
 					//Draw page and forms
-					allPagesAreRendered &= DrawPage(e.Graphics, Document.Pages[i], actualRect);
+					bool isPageDrawn = DrawPage(e.Graphics, Document.Pages[i], actualRect);
+					allPagesAreRendered &= isPageDrawn;
+
+					if(isPageDrawn)  //Draw fill forms
+						DrawFillForms(_prPages.FormsBitmap, Document.Pages[i], actualRect);
+					else if (ShowLoadingIcon) //or loading icons
+						DrawLoadingIcon(e.Graphics, Document.Pages[i], actualRect);
+
 					//Calc coordinates for page separator
 					CalcPageSeparator(actualRect, i, ref separator);
 				}
 
 				//Draw Canvas bitmap
 				e.Graphics.DrawImageUnscaled(_prPages.CanvasBitmap.Image, 0, 0);
+				e.Graphics.DrawImageUnscaled(_prPages.FormsBitmap.Image, 0, 0);
 
 				//Draw pages separators
 				DrawPageSeparators(e.Graphics, ref separator);
@@ -1790,7 +1835,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				if (!allPagesAreRendered)
 					StartInvalidateTimer();
-				else
+				else if (!UseProgressiveRender)
 					_prPages.ReleaseCanvas();
 
 				_selectedRectangles.Clear();
@@ -2044,24 +2089,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
+		/// <returns>true if page was rendered; false if any error is occurred or page is still rendering.</returns>
 		protected virtual bool DrawPage(Graphics graphics, PdfPage page, Rectangle actualRect)
 		{
 			if (actualRect.Width <= 0 || actualRect.Height <= 0)
 				return true;
 
-			if (_prPages.RenderPage(page, actualRect, PageRotation(page), RenderFlags, UseProgressiveRender))
-			{
-				//Draw fill forms
-				DrawFillForms(_prPages.CanvasBitmap, page, actualRect);
-				return true;
-			}
-			else
-			{
-				if(ShowLoadingIcon)
-					DrawLoadingIcon(graphics, page, actualRect);
-				return false;
-			}
-
+			return _prPages.RenderPage(page, actualRect, PageRotation(page), RenderFlags, UseProgressiveRender);
 		}
 
 		/// <summary>
@@ -2314,11 +2348,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		#endregion
 
 		#region Private methods
-		private void OnScrollView()
+		private void SetScrollPos(int xPos, int yPos)
+		{
+			AutoScrollPosition = new Point(xPos, yPos);
+		}
+
+		private void SetScrollExtent(int width, int height)
+        {
+            AutoScrollMinSize = new Size(width, height);
+        }
+
+		private void CalcAndSetCurrentPage()
 		{
 			if (Document != null)
 			{
-				_prPages.ReleaseCanvas();
 				int idx = CalcCurrentPage();
 				if (idx >= 0)
 				{
@@ -2429,12 +2472,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		private PointF GetRenderLocation(SizeF size)
 		{
+			var cSize = new Size(
+				Size.Width - System.Windows.Forms.SystemInformation.VerticalScrollBarWidth,
+				Size.Height - System.Windows.Forms.SystemInformation.HorizontalScrollBarHeight
+				);
 			float xleft = 0+Padding.Left;
 			float ytop = 0+Padding.Top;
-			float xcenter = ((float)ClientSize.Width - Padding.Horizontal - size.Width) / 2+Padding.Left;
-			float ycenter = ((float)ClientSize.Height - Padding.Vertical - size.Height) / 2 + Padding.Top;
-			float xright = (float)ClientSize.Width - Padding.Horizontal - size.Width + Padding.Left;
-			float ybottom = (float)ClientSize.Height - Padding.Vertical - size.Height + Padding.Top;
+			float xcenter = ((float)cSize.Width - Padding.Horizontal - size.Width) / 2 +Padding.Left;
+			float ycenter = ((float)cSize.Height - Padding.Vertical - size.Height) / 2 + Padding.Top;
+			float xright = (float)cSize.Width - Padding.Horizontal - size.Width + Padding.Left;
+			float ybottom = (float)cSize.Height - Padding.Vertical - size.Height + Padding.Top;
 
 			if (xcenter < Padding.Left)
 				xcenter = Padding.Left;
@@ -2461,6 +2508,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		private SizeF GetRenderSize(int index)
 		{
+			var cSize = new Size(
+				Size.Width - System.Windows.Forms.SystemInformation.VerticalScrollBarWidth,
+				Size.Height - System.Windows.Forms.SystemInformation.HorizontalScrollBarHeight
+				);
 			double w, h;
 			Pdfium.FPDF_GetPageSizeByIndex(Document.Handle, index, out w, out h);
 
@@ -2468,7 +2519,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			w = w / 72.0 * GetDpi();
 			h = h / 72.0 * GetDpi();
 
-			return CalcAppropriateSize(w, h, ClientSize.Width- Padding.Horizontal, ClientSize.Height- Padding.Vertical);
+			return CalcAppropriateSize(w, h, cSize.Width- Padding.Horizontal, cSize.Height- Padding.Vertical);
 		}
 
 		private SizeF CalcAppropriateSize(double w, double h, double fitWidth, double fitHeight)
@@ -3088,6 +3139,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		void Pages_CurrentPageChanged(object sender, EventArgs e)
 		{
+			if (ViewMode == ViewModes.SinglePage)
+				_prPages.ReleaseCanvas();
 			OnCurrentPageChanged(EventArgs.Empty);
 			Invalidate();
 		}
@@ -3207,7 +3260,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				return;
 			var yOffs = mouse_point.Y - _panToolInitialMousePosition.Y;
 			var xOffs = mouse_point.X - _panToolInitialMousePosition.X;
-			AutoScrollPosition = new Point(-_panToolInitialScrollPosition.X - xOffs, -_panToolInitialScrollPosition.Y - yOffs);
+            SetScrollPos(-_panToolInitialScrollPosition.X - xOffs, -_panToolInitialScrollPosition.Y - yOffs);
 		}
 		#endregion
 	}

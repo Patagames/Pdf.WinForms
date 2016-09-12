@@ -8,15 +8,22 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 	internal class PRCollection : Dictionary<PdfPage, PRItem>
 	{
 		private PdfBitmap _canvasBitmap = null;
+		private PdfBitmap _formsBitmap = null;
 		private int _waitTime;
 		private long _prevTicks;
 
 		public PdfBitmap CanvasBitmap { get { return _canvasBitmap; } }
+		public PdfBitmap FormsBitmap { get { return _formsBitmap; } }
 
 		public void InitCanvas(Size size)
 		{
 			if (_canvasBitmap == null)
 				_canvasBitmap = new PdfBitmap(size.Width, size.Height, true);
+
+			if (_formsBitmap != null)
+				_formsBitmap.Dispose();
+			_formsBitmap = new PdfBitmap(size.Width, size.Height, true);
+
 			_waitTime = 70;
 			_prevTicks = DateTime.Now.Ticks;
 		}
@@ -26,9 +33,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			foreach (var i in this)
 				ReleasePage(i.Key);
 			this.Clear();
+
 			if (_canvasBitmap != null)
 				_canvasBitmap.Dispose();
 			_canvasBitmap = null;
+
+			if (_formsBitmap != null)
+				_formsBitmap.Dispose();
+			_formsBitmap = null;
 		}
 
 		/// <summary>
