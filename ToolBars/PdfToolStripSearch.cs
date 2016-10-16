@@ -11,7 +11,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 	public class PdfToolStripSearch : PdfToolStrip
 	{
 		#region Private fields
-		PdfSearch search = null;
+		PdfSearch _search = null;
 		List<PdfSearch.FoundText> _foundText = new List<PdfSearch.FoundText>();
 		List<PdfSearch.FoundText> _forHighlight = new List<PdfSearch.FoundText>();
 		object _syncFoundText = new object();
@@ -96,9 +96,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			if (newValue != null)
 				SubscribePdfViewEvents(newValue);
 
-			if (oldValue != null && oldValue.Document != null && search == null)
+			if (oldValue != null && oldValue.Document != null && _search == null)
 				PdfViewer_DocumentClosed(this, EventArgs.Empty);
-			if (newValue != null && newValue.Document != null && search == null)
+			if (newValue != null && newValue.Document != null && _search == null)
 				PdfViewer_DocumentLoaded(this, EventArgs.Empty);
 		}
 
@@ -107,24 +107,27 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		#region Event handlers for PdfViewer
 		private void PdfViewer_DocumentClosing(object sender, EventArguments.DocumentClosingEventArgs e)
 		{
-			e.Cancel = false;
-			StopSearch();
+			if(_search!= null)
+				StopSearch();
 		}
 
 		private void PdfViewer_DocumentClosed(object sender, EventArgs e)
 		{
 			UpdateButtons();
-			search.FoundTextAdded -= Search_FoundTextAdded;
-			search.SearchCompleted -= Search_SearchCompleted;
-			StopSearch();
+			if (_search != null)
+			{
+				_search.FoundTextAdded -= Search_FoundTextAdded;
+				_search.SearchCompleted -= Search_SearchCompleted;
+				StopSearch();
+			}
         }
 
 		private void PdfViewer_DocumentLoaded(object sender, EventArgs e)
 		{
 			UpdateButtons();
-			search = new PdfSearch(PdfViewer.Document);
-			search.FoundTextAdded += Search_FoundTextAdded;
-			search.SearchCompleted += Search_SearchCompleted;
+			_search = new PdfSearch(PdfViewer.Document);
+			_search.FoundTextAdded += Search_FoundTextAdded;
+			_search.SearchCompleted += Search_SearchCompleted;
 		}
 
 		private void Search_SearchCompleted(object sender, System.ComponentModel.RunWorkerCompletedEventArgs e)
@@ -186,6 +189,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		#region Private methods
 		private void UnsubscribePdfViewEvents(PdfViewer oldValue)
 		{
+			oldValue.BeforeDocumentChanged -= PdfViewer_DocumentClosing;
+			oldValue.AfterDocumentChanged -= PdfViewer_DocumentLoaded;
 			oldValue.DocumentLoaded -= PdfViewer_DocumentLoaded;
 			oldValue.DocumentClosing -= PdfViewer_DocumentClosing;
 			oldValue.DocumentClosed -= PdfViewer_DocumentClosed;
@@ -193,6 +198,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 		private void SubscribePdfViewEvents(PdfViewer newValue)
 		{
+			newValue.BeforeDocumentChanged += PdfViewer_DocumentClosing;
+			newValue.AfterDocumentChanged += PdfViewer_DocumentLoaded;
 			newValue.DocumentLoaded += PdfViewer_DocumentLoaded;
 			newValue.DocumentClosing += PdfViewer_DocumentClosing;
 			newValue.DocumentClosed += PdfViewer_DocumentClosed;
@@ -203,15 +210,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			StopSearch();
 			if (searchText == "")
 				return;
-            search.Start(searchText, sb.FindFlags);
+            _search.Start(searchText, sb.FindFlags);
 			_foundTextTimer.Start();
 		}
 
 		private void StopSearch()
 		{
 			_foundTextTimer.Stop();
-			search.End();
-			while (search.IsBusy)
+			_search.End();
+			while (_search.IsBusy)
 				Application.DoEvents();
 			_foundText.Clear();
 			_forHighlight.Clear();

@@ -8,6 +8,7 @@ using Patagames.Pdf.Enums;
 using Patagames.Pdf.Net.EventArguments;
 using Patagames.Pdf.Net.Exceptions;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
 
 namespace Patagames.Pdf.Net.Controls.WinForms
 {
@@ -64,13 +65,32 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private Font _loadingFont = new Font("Tahoma", 10);
 
 		private bool _skipOnResize = false;
-        #endregion
+		private bool _loadedByViewer = true;
 
-        #region Events
-        /// <summary>
-        /// Occurs whenever the document loads.
-        /// </summary>
-        public event EventHandler DocumentLoaded;
+		private struct CaptureInfo
+		{
+			public PdfForms forms;
+			public ISynchronizeInvoke sync;
+			public Color color;
+		}
+		private CaptureInfo _externalDocCapture;
+		#endregion
+
+		#region Events
+		/// <summary>
+		/// Occurs whenever the Document property is changed.
+		/// </summary>
+		public event EventHandler AfterDocumentChanged;
+
+		/// <summary>
+		/// Occurs immediately before the document property would be changed.
+		/// </summary>
+		public event EventHandler<DocumentClosingEventArgs> BeforeDocumentChanged;
+
+		/// <summary>
+		/// Occurs whenever the document loads.
+		/// </summary>
+		public event EventHandler DocumentLoaded;
 
 		/// <summary>
 		/// Occurs before the document unloads.
@@ -183,16 +203,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public event EventHandler HighlightedTextChanged;
 
 		/// <summary>
-		/// Occurs when the value of the <see cref="BookmarksViewer"/> property has changed.
-		/// </summary>
-		public event EventHandler BookmarksViewerChanged;
-
-		/// <summary>
-		/// Occurs when the value of the <see cref="NamedDestinationsViewer"/> property has changed.
-		/// </summary>
-		public event EventHandler NamedDestinationsViewerChanged;
-
-		/// <summary>
 		/// Occurs when the value of the <see cref="MouseModes"/> property has changed.
 		/// </summary>
 		public event EventHandler MouseModeChanged;
@@ -211,20 +221,39 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Occurs when the value of the <see cref="LoadingIconText"/> property has changed.
 		/// </summary>
 		public event EventHandler LoadingIconTextChanged;
-		
+
 
 		#endregion
 
 		#region Event raises
+		/// <summary>
+		/// Raises the <see cref="AfterDocumentChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		protected virtual void OnAfterDocumentChanged(EventArgs e)
+		{
+			if (AfterDocumentChanged != null)
+				AfterDocumentChanged(this, e);
+		}
+
+		/// <summary>
+		/// Raises the <see cref="BeforeDocumentChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		/// <returns>True if changing should be canceled, False otherwise</returns>
+		protected virtual bool OnBeforeDocumentChanged(DocumentClosingEventArgs e)
+		{
+			if (BeforeDocumentChanged != null)
+				BeforeDocumentChanged(this, e);
+			return e.Cancel;
+		}
+
 		/// <summary>
 		/// Raises the <see cref="DocumentLoaded"/> event.
 		/// </summary>
 		/// <param name="e">An System.EventArgs that contains the event data.</param>
 		protected virtual void OnDocumentLoaded(EventArgs e)
 		{
-			if (Document != null && Document.FormFill != null)
-				Document.FormFill.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
-
 			if (DocumentLoaded != null)
 				DocumentLoaded(this, e);
 		}
@@ -452,26 +481,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
-		/// Raises the <see cref="BookmarksViewerChanged"/> event.
-		/// </summary>
-		/// <param name="e">An System.EventArgs that contains the event data.</param>
-		protected virtual void OnBookmarksViewerChanged(EventArgs e)
-		{
-			if (BookmarksViewerChanged != null)
-				BookmarksViewerChanged(this, e);
-		}
-
-		/// <summary>
-		/// Raises the <see cref="NamedDestinationsViewerChanged"/> event.
-		/// </summary>
-		/// <param name="e">An System.EventArgs that contains the event data.</param>
-		protected virtual void OnNamedDestinationsViewerChanged(EventArgs e)
-		{
-			if (NamedDestinationsViewerChanged != null)
-				NamedDestinationsViewerChanged(this, e);
-		}
-
-		/// <summary>
 		/// Raises the <see cref="MouseModeChanged"/> event.
 		/// </summary>
 		/// <param name="e">An System.EventArgs that contains the event data.</param>
@@ -530,16 +539,41 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 			set
 			{
-				if (!DesignMode && !AllowSetDocument && value != null)
-					throw new ArgumentException(Properties.Error.err0001, "AllowSetDocument");
 				if (_document != value)
 				{
+					if (OnBeforeDocumentChanged(new DocumentClosingEventArgs()))
+						return;
+
+					if (_document!= null && _loadedByViewer)
+					{
+						//we need to close the previous document if it was loaded by viewer
+						if (OnDocumentClosing(new DocumentClosingEventArgs()))
+							return; //the closing was canceled;
+						_document.Dispose();
+						_document = null;
+						OnDocumentClosed(EventArgs.Empty);
+					}
+					else if (_document != null && !_loadedByViewer)
+					{
+						_document.Pages.CurrentPageChanged -= Pages_CurrentPageChanged;
+						_document.Pages.PageInserted -= Pages_PageInserted;
+						_document.Pages.PageDeleted -= Pages_PageDeleted;
+						_document.Pages.ProgressiveRender -= Pages_ProgressiveRender;
+					}
+					SetScrollExtent(0, 0);
+					_selectInfo = new SelectInfo() { StartPage = -1 };
+					_highlightedText.Clear();
+					_onstartPageIndex = 0;
+					_renderRects = null;
+					_loadedByViewer = false;
 					Pdfium.FPDF_ShowSplash(true);
-					CloseDocument();
+					ReleaseFillForms(_externalDocCapture);
 					_document = value;
 					UpdateLayout();
 					if (_document != null)
 					{
+						if (_document.FormFill != _fillForms)
+							_externalDocCapture = CaptureFillForms(_document.FormFill);
 						_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
 						_document.Pages.PageInserted += Pages_PageInserted;
 						_document.Pages.PageDeleted += Pages_PageDeleted;
@@ -547,9 +581,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 						SetCurrentPage(_onstartPageIndex);
 						if (_document.Pages.Count > 0)
 							ScrollToPage(_onstartPageIndex);
-						SetupControls();
-						OnDocumentLoaded(EventArgs.Empty);
 					}
+					OnAfterDocumentChanged(EventArgs.Empty);
 				}
 			}
 		}
@@ -696,8 +729,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (_formHighlightColor != value)
 				{
 					_formHighlightColor = value;
-					if (Document != null && Document.FormFill != null)
-						Document.FormFill.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
+					if (_fillForms != null)
+						_fillForms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
+					if(Document!= null && !_loadedByViewer && _externalDocCapture.forms!= null)
+						_externalDocCapture.forms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
 					Invalidate();
 					OnFormHighlightColorChanged(EventArgs.Empty);
 				}
@@ -897,6 +932,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <summary>
 		/// Gets or sets a value indicating whether the control can accept PDF document through Document property.
 		/// </summary>
+		[Obsolete("This property is ignored now", false)]
 		public bool AllowSetDocument { get; set; }
 
 		/// <summary>
@@ -964,58 +1000,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Gets information about highlighted text in a PdfView control
 		/// </summary>
 		public SortedDictionary<int, List<HighlightInfo>> HighlightedTextInfo { get { return _highlightedText; } }
-
-		/// <summary>
-		/// Gets or sets the <see cref="BookmarksViewer"/> control associated with current PdfViewer control
-		/// </summary>
-		public BookmarksViewer BookmarksViewer
-		{
-			get
-			{
-				return _bookmarksViewer;
-			}
-			set
-			{
-				if (_bookmarksViewer != value)
-				{
-					UnsubscribeBookmarksEvent();
-
-					_bookmarksViewer = value;
-					if (_bookmarksViewer != null)
-						_bookmarksViewer.Document = Document;
-
-					SubscribeBookmarksEvent();
-
-					OnBookmarksViewerChanged(EventArgs.Empty);
-				}
-			}
-		}
-
-		/// <summary>
-		/// Gets or sets the <see cref="NamedDestinationsViewer"/> control associated with current PdfViewer control
-		/// </summary>
-		public NamedDestinationsViewer NamedDestinationsViewer
-		{
-			get
-			{
-				return _namedDestinationsViewer;
-			}
-			set
-			{
-				if (_namedDestinationsViewer != value)
-				{
-					UnsubscribeNamedDestinationsEvent();
-
-					_namedDestinationsViewer = value;
-					if (_namedDestinationsViewer != null)
-						_namedDestinationsViewer.Document = Document;
-
-					SubscribeNamedDestinationsEvent();
-
-					OnNamedDestinationsViewerChanged(EventArgs.Empty);
-				}
-			}
-		}
 
 		/// <summary>
 		/// Gets or sets mouse mode for pdf viewer control
@@ -1536,17 +1520,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public void LoadDocument(string path, string password = null)
 		{
 			try {
-				Pdfium.FPDF_ShowSplash(true);
 				CloseDocument();
-				_document = PdfDocument.Load(path, _fillForms, password);
-				UpdateLayout();
-				_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
-				_document.Pages.PageInserted += Pages_PageInserted;
-				_document.Pages.PageDeleted += Pages_PageDeleted;
-				_document.Pages.ProgressiveRender += Pages_ProgressiveRender;
-				SetCurrentPage(_onstartPageIndex);
-				ScrollToPage(_onstartPageIndex);
-				SetupControls();
+				Document = PdfDocument.Load(path, _fillForms, password);
+				_loadedByViewer = true;
 				OnDocumentLoaded(EventArgs.Empty);
 			}
 			catch (NoLicenseException ex)
@@ -1576,17 +1552,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public void LoadDocument(Stream stream, string password = null)
 		{
 			try {
-				Pdfium.FPDF_ShowSplash(true);
 				CloseDocument();
-				_document = PdfDocument.Load(stream, _fillForms, password);
-				UpdateLayout();
-				_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
-				_document.Pages.PageInserted += Pages_PageInserted;
-				_document.Pages.PageDeleted += Pages_PageDeleted;
-				_document.Pages.ProgressiveRender += Pages_ProgressiveRender;
-				SetCurrentPage(_onstartPageIndex);
-				ScrollToPage(_onstartPageIndex);
-				SetupControls();
+				Document = PdfDocument.Load(stream, _fillForms, password);
+				_loadedByViewer = true;
 				OnDocumentLoaded(EventArgs.Empty);
 			}
 			catch (NoLicenseException ex)
@@ -1617,17 +1585,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public void LoadDocument(byte[] pdf, string password = null)
 		{
 			try {
-				Pdfium.FPDF_ShowSplash(true);
 				CloseDocument();
-				_document = PdfDocument.Load(pdf, _fillForms, password);
-				UpdateLayout();
-				_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
-				_document.Pages.PageInserted += Pages_PageInserted;
-				_document.Pages.PageDeleted += Pages_PageDeleted;
-				_document.Pages.ProgressiveRender += Pages_ProgressiveRender;
-				SetCurrentPage(_onstartPageIndex);
-				ScrollToPage(_onstartPageIndex);
-				SetupControls();
+				Document = PdfDocument.Load(pdf, _fillForms, password);
+				_loadedByViewer = true;
 				OnDocumentLoaded(EventArgs.Empty);
 			}
 			catch (NoLicenseException ex)
@@ -1642,22 +1602,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		public void CloseDocument()
 		{
-			if (_document != null)
-			{
-				if (OnDocumentClosing(new DocumentClosingEventArgs()))
-					return;
-				DeselectText();
-				ReleaseControls();
-				_document.Dispose();
-				_document = null;
-				OnDocumentClosed(EventArgs.Empty);
-			}
-			_renderRects = null;
-			_document = null;
-			_onstartPageIndex = 0;
-            SetScrollExtent(0, 0);
-			Invalidate();
-
+			Document = null;
 		}
 		#endregion
 
@@ -1690,15 +1635,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			DoubleBuffered = true;
 
 			_fillForms = new PdfForms();
-			_fillForms.SynchronizingObject = this;
-			_fillForms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
-			_fillForms.AppBeep += FormsAppBeep;
-			_fillForms.DoGotoAction += FormsDoGotoAction;
-			_fillForms.DoNamedAction += FormsDoNamedAction;
-			_fillForms.GotoPage += FormsGotoPage;
-			_fillForms.Invalidate += FormsInvalidate;
-			_fillForms.OutputSelectedRect += FormsOutputSelectedRect;
-			_fillForms.SetCursor += FormsSetCursor;
+			CaptureFillForms(_fillForms);
 		}
 		#endregion
 
@@ -2348,6 +2285,42 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		#endregion
 
 		#region Private methods
+		private CaptureInfo CaptureFillForms(PdfForms fillForms)
+		{
+			var ret = new CaptureInfo();
+			if (fillForms == null)
+				return ret;
+
+			ret.forms = fillForms;
+			ret.sync = fillForms.SynchronizingObject;
+
+			fillForms.SynchronizingObject = this;
+			ret.color = fillForms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
+			fillForms.AppBeep += FormsAppBeep;
+			fillForms.DoGotoAction += FormsDoGotoAction;
+			fillForms.DoNamedAction += FormsDoNamedAction;
+			fillForms.GotoPage += FormsGotoPage;
+			fillForms.Invalidate += FormsInvalidate;
+			fillForms.OutputSelectedRect += FormsOutputSelectedRect;
+			fillForms.SetCursor += FormsSetCursor;
+			return ret;
+		}
+
+		private void ReleaseFillForms(CaptureInfo captureInfo)
+		{
+			if (captureInfo.forms == null)
+				return;
+			captureInfo.forms.AppBeep -= FormsAppBeep;
+			captureInfo.forms.DoGotoAction -= FormsDoGotoAction;
+			captureInfo.forms.DoNamedAction -= FormsDoNamedAction;
+			captureInfo.forms.GotoPage -= FormsGotoPage;
+			captureInfo.forms.Invalidate -= FormsInvalidate;
+			captureInfo.forms.OutputSelectedRect -= FormsOutputSelectedRect;
+			captureInfo.forms.SetCursor -= FormsSetCursor;
+			captureInfo.forms.SynchronizingObject = captureInfo.sync;
+			captureInfo.forms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, captureInfo.color);
+		}
+
 		private void SetScrollPos(int xPos, int yPos)
 		{
 			AutoScrollPosition = new Point(xPos, yPos);
@@ -2821,24 +2794,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return false;
 		}
 
-		private void SetupControls()
-		{
-			if (BookmarksViewer != null)
-				BookmarksViewer.Document = _document;
-
-			if (NamedDestinationsViewer != null)
-				NamedDestinationsViewer.Document = _document;
-		}
-
-		private void ReleaseControls()
-		{
-			if (BookmarksViewer != null)
-				BookmarksViewer.Document = null;
-
-			if (NamedDestinationsViewer != null)
-				NamedDestinationsViewer.Document = null;
-		}
-
 		private bool GetWord(PdfText text, int ci, out int si, out int ei)
 		{
 			si = ei = ci;
@@ -2910,84 +2865,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				}
 			}
 			return _dpi;
-		}
-		#endregion
-
-		#region Private fields, event handlers, methods, etc for bookmarks control
-	private BookmarksViewer _bookmarksViewer;
-
-		private void SubscribeBookmarksEvent()
-		{
-			if (_bookmarksViewer != null)
-				_bookmarksViewer.AfterSelect += _bookmarksViewer_AfterSelect;
-		}
-
-		private void UnsubscribeBookmarksEvent()
-		{
-			if (_bookmarksViewer != null)
-				_bookmarksViewer.AfterSelect -= _bookmarksViewer_AfterSelect;
-		}
-
-		private void _bookmarksViewer_AfterSelect(object sender, TreeViewEventArgs e)
-		{
-			if (NamedDestinationsViewer != null)
-				NamedDestinationsViewer.Document = _document;
-
-			var node = e.Node as BookmarksViewerNode;
-			if (node == null || node.Bookmark == null)
-				return;
-
-			if (node.Bookmark.Action != null)
-				ProcessAction(node.Bookmark.Action);
-			else if (node.Bookmark.Destination != null)
-				ProcessDestination(node.Bookmark.Destination);
-		}
-		#endregion
-
-		#region Private fields, event handlers, methods, etc for named dest control
-		private NamedDestinationsViewer _namedDestinationsViewer;
-	
-		private void SubscribeNamedDestinationsEvent()
-		{
-			if (_namedDestinationsViewer != null)
-			{
-				_namedDestinationsViewer.MouseDoubleClick += _namedDestinationsViewer_MouseDoubleClick;
-				_namedDestinationsViewer.KeyDown += _namedDestinationsViewer_KeyDown;
-			}
-		}
-
-		private void UnsubscribeNamedDestinationsEvent()
-		{
-			if (_namedDestinationsViewer != null)
-			{
-				_namedDestinationsViewer.MouseDoubleClick += _namedDestinationsViewer_MouseDoubleClick;
-				_namedDestinationsViewer.KeyDown += _namedDestinationsViewer_KeyDown;
-			}
-		}
-
-		private void _namedDestinationsViewer_KeyDown(object sender, KeyEventArgs e)
-		{
-			if (e.KeyCode == Keys.Enter)
-				ProcessNamedDestinationsClick();
-		}
-
-		private void _namedDestinationsViewer_MouseDoubleClick(object sender, MouseEventArgs e)
-		{
-			ProcessNamedDestinationsClick();
-		}
-
-
-		private void ProcessNamedDestinationsClick()
-		{
-			foreach (int index in _namedDestinationsViewer.SelectedIndices)
-			{
-				var item = _namedDestinationsViewer.Items[index] as NamedDestinationsViewerItem;
-				if (item == null)
-					continue;
-
-				if (item.Destination != null)
-					ProcessDestination(item.Destination);
-			}
 		}
 		#endregion
 

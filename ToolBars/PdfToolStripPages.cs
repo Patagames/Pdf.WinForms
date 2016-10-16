@@ -83,16 +83,19 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			if (tsi != null)
 				tsi.Enabled = (PdfViewer != null) && (PdfViewer.Document != null);
 
-			if (PdfViewer == null || PdfViewer.Document == null)
-				return;
-
 			tsi = this.Items["btnPageNumber"];
 			if (tsi == null)
 				return;
+			tsi.Enabled = (PdfViewer != null) && (PdfViewer.Document != null);
 
 			var tb = (tsi as ToolStripTextBox).TextBox;
-			if(tb!= null)
-				tb.Text = string.Format("{0} / {1}", PdfViewer.Document.Pages.CurrentIndex+1, PdfViewer.Document.Pages.Count);
+			if (tb == null)
+				return;
+
+			if (PdfViewer == null || PdfViewer.Document == null)
+				tb.Text = "";
+			else
+				tb.Text = string.Format("{0} / {1}", PdfViewer.Document.Pages.CurrentIndex + 1, PdfViewer.Document.Pages.Count);
         }
 
 		/// <summary>
@@ -228,6 +231,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		#region Private methods
 		private void UnsubscribePdfViewEvents(PdfViewer oldValue)
 		{
+			oldValue.AfterDocumentChanged -= PdfViewer_SomethingChanged;
 			oldValue.DocumentLoaded -= PdfViewer_SomethingChanged;
 			oldValue.DocumentClosed -= PdfViewer_SomethingChanged;
 			oldValue.CurrentPageChanged -= PdfViewer_SomethingChanged;
@@ -235,6 +239,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 		private void SubscribePdfViewEvents(PdfViewer newValue)
 		{
+			newValue.AfterDocumentChanged += PdfViewer_SomethingChanged;
 			newValue.DocumentLoaded += PdfViewer_SomethingChanged;
 			newValue.DocumentClosed += PdfViewer_SomethingChanged;
 			newValue.CurrentPageChanged += PdfViewer_SomethingChanged;
