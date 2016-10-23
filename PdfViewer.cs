@@ -3066,7 +3066,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				StartPage = page_index,
 				EndPage = page_index,
 				StartIndex = Document.Pages[page_index].Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f),
-				EndIndex = Document.Pages[page_index].Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f),
+				EndIndex = -1// Document.Pages[page_index].Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f),
 			};
 			_isShowSelection = false;
 			if (_selectInfo.StartPage >= 0)
