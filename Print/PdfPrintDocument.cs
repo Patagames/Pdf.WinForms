@@ -18,6 +18,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		bool _useDP;
 		#endregion;
 
+		#region Public events
+		/// <summary>
+		/// Occurs after the page of the document is loaded and before prints.
+		/// </summary>
+		public event EventHandler<BeforeRenderPageEventArgs> BeforeRenderPage;
+		#endregion
+
 		#region Public properties
 		/// <summary>
 		/// Automatically rotate pages when printing
@@ -48,6 +55,19 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		#endregion
 
 		#region Overriding
+		/// <summary>
+		/// Raises the BeforeRenderPage event.
+		/// </summary>
+		/// <param name="page">The pagewhat will be printed.</param>
+		/// <param name="width">The page's width calculated to match the sheet size.</param>
+		/// <param name="height">The page's height calculated to match the sheet size.</param>
+		/// <param name="rotation">The page rotation.</param>
+		protected virtual void OnBeforeRenderPage(PdfPage page, double width, double height, PageRotate rotation)
+		{
+			if (BeforeRenderPage != null)
+				BeforeRenderPage(this, new BeforeRenderPageEventArgs(page, width, height, rotation));
+		}
+
 		/// <summary>
 		/// Raises the System.Drawing.Printing.PrintDocument.BeginPrint event. It is called
 		/// after the System.Drawing.Printing.PrintDocument.Print method is called and before
@@ -126,6 +146,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				double width, height;
 				CalcSize(currentPage, dpiX, dpiY, e.PageSettings.PrintableArea, e.PageSettings.Landscape, out width, out height);
 				PageRotate rotation = CalcRotation(currentPage, e.PageSettings.Landscape, ref width, ref height);
+
+				using (var page = PdfPage.FromHandle(_pdfDoc, currentPage, _pageForPrint))
+				{
+					OnBeforeRenderPage(page, width, height, rotation);
+				}
 
 				hdc = e.Graphics.GetHdc();
 				Pdfium.FPDF_RenderPage(

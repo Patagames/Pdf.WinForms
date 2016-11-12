@@ -1435,8 +1435,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			_prPages.ReleaseCanvas(); //something changed. Release canvas
 
-			if (Document == null)
+			if (Document == null || Document.Pages.Count <= 0)
+			{
+				_renderRects = null;
+				Invalidate();
 				return;
+			}
 
 			var pagePoint = new PointF(0, 0);
 			bool needToScroll = false;

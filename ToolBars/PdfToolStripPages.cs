@@ -231,6 +231,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		#region Private methods
 		private void UnsubscribePdfViewEvents(PdfViewer oldValue)
 		{
+			if (oldValue.Document != null)
+			{
+				oldValue.Document.Pages.PageInserted -= PdfViewer_SomethingChanged;
+				oldValue.Document.Pages.PageDeleted -= PdfViewer_SomethingChanged;
+			}
+			oldValue.BeforeDocumentChanged -= Subscribe_BeforeDocumentChanged;
+			oldValue.AfterDocumentChanged -= Subscribe_AfterDocumentChanged;
 			oldValue.AfterDocumentChanged -= PdfViewer_SomethingChanged;
 			oldValue.DocumentLoaded -= PdfViewer_SomethingChanged;
 			oldValue.DocumentClosed -= PdfViewer_SomethingChanged;
@@ -239,10 +246,35 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 		private void SubscribePdfViewEvents(PdfViewer newValue)
 		{
+			if (newValue.Document != null)
+			{
+				newValue.Document.Pages.PageInserted -= PdfViewer_SomethingChanged;
+				newValue.Document.Pages.PageDeleted -= PdfViewer_SomethingChanged;
+			}
+			newValue.BeforeDocumentChanged += Subscribe_BeforeDocumentChanged;
+			newValue.AfterDocumentChanged += Subscribe_AfterDocumentChanged;
 			newValue.AfterDocumentChanged += PdfViewer_SomethingChanged;
 			newValue.DocumentLoaded += PdfViewer_SomethingChanged;
 			newValue.DocumentClosed += PdfViewer_SomethingChanged;
 			newValue.CurrentPageChanged += PdfViewer_SomethingChanged;
+		}
+
+		private void Subscribe_AfterDocumentChanged(object sender, EventArgs e)
+		{
+			if (PdfViewer.Document != null)
+			{
+				PdfViewer.Document.Pages.PageInserted += PdfViewer_SomethingChanged;
+				PdfViewer.Document.Pages.PageDeleted += PdfViewer_SomethingChanged;
+			}
+		}
+
+		private void Subscribe_BeforeDocumentChanged(object sender, EventArguments.DocumentClosingEventArgs e)
+		{
+			if (PdfViewer.Document != null)
+			{
+				PdfViewer.Document.Pages.PageInserted -= PdfViewer_SomethingChanged;
+				PdfViewer.Document.Pages.PageDeleted -= PdfViewer_SomethingChanged;
+			}
 		}
 
 		#endregion

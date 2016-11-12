@@ -56,6 +56,7 @@
     </Compile>
     <Compile Include="NamedDestinationsViewerItem.cs" />
     <Compile Include="PRCollection.cs" />
+    <Compile Include="Print\BeforeRenderPageEventArgs.cs" />
     <Compile Include="Print\PdfPrintDocument.cs">
       <SubType>Component</SubType>
     </Compile>
