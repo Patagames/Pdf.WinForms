@@ -30,6 +30,30 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Automatically rotate pages when printing
 		/// </summary>
 		public bool AutoRotate { get; set; }
+
+		/// <summary>
+		/// Gets or sets a value indicating the PDF document that will be printed.
+		/// </summary>
+		public PdfDocument Document
+		{
+			get
+			{
+				return _pdfDoc;
+			}
+			set
+			{
+				if (value == null)
+					throw new ArgumentNullException("Document");
+				if (_pdfDoc != value)
+				{
+					_pdfDoc = value;
+					PrinterSettings.MinimumPage = 1;
+					PrinterSettings.MaximumPage = _pdfDoc.Pages.Count;
+					PrinterSettings.FromPage = PrinterSettings.MinimumPage;
+					PrinterSettings.ToPage = PrinterSettings.MaximumPage;
+				}
+			}
+		}
 		#endregion
 
 		#region Constructors, destructors and initialization

@@ -2281,8 +2281,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
-		private void DrawPageSeparators(Graphics graphics, ref List<Point> separator)
+		protected virtual void DrawPageSeparators(Graphics graphics, ref List<Point> separator)
 		{
+			if (separator == null || !ShowPageSeparator)
+				return;
+
 			for (int sep = 0; sep < separator.Count; sep += 2)
 				graphics.DrawLine(_pageSeparatorColorPen, separator[sep], separator[sep + 1]);
 		}
