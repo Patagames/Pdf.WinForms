@@ -251,7 +251,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				);
 
 			var rot = Pdfium.FPDFPage_GetRotation(currentPage);
-			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
+			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90) || (width > height);
 
 			if (AutoRotate && isRotated)
 				fitSize = new SizeF(fitSize.Height, fitSize.Width);
@@ -266,7 +266,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private PageRotate CalcRotation(IntPtr currentPage, bool isLandscape, ref double width, ref double height)
 		{
 			var rot = Pdfium.FPDFPage_GetRotation(currentPage);
-			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90);
+			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90) || (width > height);
 
 			if (AutoRotate && isRotated != isLandscape)
 			{
