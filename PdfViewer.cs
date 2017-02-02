@@ -1077,6 +1077,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				}
 			}
 		}
+
+		/// <summary>
+		/// Gets or sets a value indicating whether the PdfViewer will dispose any pages placed outside of its visible boundaries.
+		/// </summary>
+		public bool PageAutoDispose { get; set; }
 		#endregion
 
 		#region Public methods
@@ -1634,6 +1639,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			TilesCount = 2;
 			ShowLoadingIcon = true;
 			UseProgressiveRender = true;
+			PageAutoDispose = true;
 
 			InitializeComponent();
 			DoubleBuffered = true;
@@ -1727,7 +1733,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					Rectangle actualRect = CalcActualRect(i);
 					if (!actualRect.IntersectsWith(ClientRectangle))
 					{
-						Document.Pages[i].Dispose();
+						if(PageAutoDispose)
+							Document.Pages[i].Dispose();
 						continue; //Page is invisible. Skip it
 					}
 					
@@ -2741,7 +2748,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					Document.Pages.CurrentIndex = index;
 					OnCurrentPageChanged(EventArgs.Empty);
 
-					if(ViewMode== ViewModes.SinglePage && prevIdx>0 && prevIdx< Document.Pages.Count)
+					if(ViewMode== ViewModes.SinglePage && prevIdx>0 && prevIdx< Document.Pages.Count && PageAutoDispose)
 						Document.Pages[prevIdx].Dispose();
 				}
 			}
