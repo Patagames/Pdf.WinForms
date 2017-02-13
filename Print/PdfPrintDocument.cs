@@ -16,6 +16,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		IntPtr _printHandle;
 		IntPtr _docForPrint;
 		bool _useDP;
+		int _scale = 100;
 		#endregion;
 
 		#region Public events
@@ -30,6 +31,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Automatically rotate pages when printing
 		/// </summary>
 		public bool AutoRotate { get; set; }
+
+		/// <summary>
+		/// Gets or sets a Boolean indicating whether a page will be centered automatically on the sheet when printing.
+		/// </summary>
+		public bool AutoCenter { get; set; }
 
 		/// <summary>
 		/// Gets or sets a value indicating the PDF document that will be printed.
@@ -54,6 +60,29 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				}
 			}
 		}
+
+
+		/// <summary>
+		/// Gets or sets the size mode for the pages.
+		/// </summary>
+		public PrintSizeMode PrintSizeMode { get; set; }
+
+		/// <summary>
+		/// The scale of the pages in prcent. Must be between 1 and 1000
+		/// </summary>
+		public int Scale
+		{
+			get { return _scale; }
+			set
+			{
+				if (value == _scale)
+					return;
+				else if (value < 1 || value > 1000)
+					throw new ArgumentOutOfRangeException("Value", value, string.Format(Properties.Error.err0003, 1, 1000));
+				_scale = value;
+				PrintSizeMode = PrintSizeMode.CustomScale;
+			}
+		}
 		#endregion
 
 		#region Constructors, destructors and initialization
@@ -68,8 +97,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				throw new ArgumentNullException("Document");
 
 			_pdfDoc = Document;
-			_useDP = (mode==1);
+			_useDP = (mode == 1);
 			AutoRotate = true;
+			AutoCenter = false;
 
 			PrinterSettings.MinimumPage = 1;
 			PrinterSettings.MaximumPage = _pdfDoc.Pages.Count;
@@ -124,7 +154,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				e.Cancel = true;
 				return;
 			}
-			_pageForPrint = _useDP ? 0 : PrinterSettings.FromPage-1;
+			_pageForPrint = _useDP ? 0 : PrinterSettings.FromPage - 1;
 		}
 
 		/// <summary>
@@ -168,7 +198,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				double dpiY = e.Graphics.DpiY;
 
 				double width, height;
-				CalcSize(currentPage, dpiX, dpiY, e.PageSettings.PrintableArea, e.PageSettings.Landscape, out width, out height);
+				double x, y;
+				CalcSize(currentPage, dpiX, dpiY, e.PageSettings.PrintableArea, e.PageSettings.Landscape, out width, out height, out x, out y);
 				PageRotate rotation = CalcRotation(currentPage, e.PageSettings.Landscape, ref width, ref height);
 
 				using (var page = PdfPage.FromHandle(_pdfDoc, currentPage, _pageForPrint))
@@ -180,8 +211,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				Pdfium.FPDF_RenderPage(
 					hdc,
 					currentPage,
-					0,
-					0,
+					(int)x,
+					(int)y,
 					(int)(width),
 					(int)(height),
 					rotation,
@@ -204,12 +235,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				currentPage = IntPtr.Zero;
 			}
 		}
+
 		#endregion
 
 		#region Private methods
 		private IntPtr InitDocument()
 		{
-			if(!_useDP)
+			if (!_useDP)
 				return _pdfDoc.Handle;
 
 			_printHandle = Pdfium.FPDFPRINT_Open(
@@ -233,8 +265,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return _docForPrint;
 		}
 
-		private void CalcSize(IntPtr currentPage, double dpiX, double dpiY, RectangleF printableArea, bool isLandscape, out double width, out double height)
+		private void CalcSize(IntPtr currentPage, double dpiX, double dpiY, RectangleF printableArea, bool isLandscape, out double width, out double height, out double x, out double y)
 		{
+			x = y = 0;
 			width = Pdfium.FPDF_GetPageWidth(currentPage) / 72 * dpiX;
 			height = Pdfium.FPDF_GetPageHeight(currentPage) / 72 * dpiY;
 			if (_useDP)
@@ -258,9 +291,27 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			else if (!AutoRotate && isLandscape)
 				fitSize = new SizeF(fitSize.Height, fitSize.Width);
 
-			var sz = GetRenderSize(pageSize, fitSize);
-			width = sz.Width;
-			height = sz.Height;
+			switch (PrintSizeMode)
+			{
+				case PrintSizeMode.Fit:
+					var sz = GetRenderSize(pageSize, fitSize);
+					width = sz.Width;
+					height = sz.Height;
+					break;
+				case PrintSizeMode.CustomScale:
+					width *= (double)Scale / 100.0;
+					height *= (double)Scale / 100.0;
+					break;
+				case PrintSizeMode.ActualSize:
+				default:
+					break;
+			}
+
+			if (AutoCenter)
+			{
+				x = (fitSize.Width - width) / 2;
+				y = (fitSize.Height - height) / 2;
+			}
 		}
 
 		private PageRotate CalcRotation(IntPtr currentPage, bool isLandscape, ref double width, ref double height)

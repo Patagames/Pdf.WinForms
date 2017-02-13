@@ -79,6 +79,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The value must be between {0} and {1}..
+        /// </summary>
+        internal static string err0003 {
+            get {
+                return ResourceManager.GetString("err0003", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error!.
         /// </summary>
         internal static string ErrorHeader {

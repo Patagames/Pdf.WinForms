@@ -132,4 +132,7 @@
   <data name="LoadingText" xml:space="preserve">
     <value>Loading...</value>
   </data>
+  <data name="err0003" xml:space="preserve">
+    <value>The value must be between {0} and {1}.</value>
+  </data>
 </root>
