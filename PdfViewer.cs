@@ -1440,7 +1440,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			_prPages.ReleaseCanvas(); //something changed. Release canvas
 
-			if (Document == null || Document.Pages.Count <= 0)
+			if (Document == null || Document.Pages.Count <= 0 || Width==0 || Height==0)
 			{
 				_renderRects = null;
 				Invalidate();
@@ -1737,7 +1737,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 							Document.Pages[i].Dispose();
 						continue; //Page is invisible. Skip it
 					}
-					
+
+					//Load page if need
+					var pageHandle = Document.Pages[i].Handle;
+					if (_prPages.CanvasBitmap == null) 
+						_prPages.InitCanvas(ClientSize); //The canvas was dropped due to the execution of scripts on the page while it loading.
+
 					//Draw page background
 					DrawPageBackColor(e.Graphics, actualRect.X, actualRect.Y, actualRect.Width, actualRect.Height);
 					//Draw page and forms
