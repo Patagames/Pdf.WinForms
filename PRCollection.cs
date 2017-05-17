@@ -88,7 +88,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (!this.ContainsKey(page))
 				ProcessNew(page); //Add new page into collection
 
-			if (!useProgressiveRender)
+			if ((renderFlags & (RenderFlags.FPDF_THUMBNAIL | RenderFlags.FPDF_HQTHUMBNAIL)) != 0)
+				this[page].status = ProgressiveRenderingStatuses.RenderDone + 4;
+			else if (!useProgressiveRender)
 				this[page].status = ProgressiveRenderingStatuses.RenderDone + 3;
 			return ProcessExisting(page, pageRect, pageRotate, renderFlags);
 		}
@@ -113,12 +115,17 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					return true; //Stop rendering. Return image.
 
 				case ProgressiveRenderingStatuses.RenderDone + 2:
-					return true; //Rendering already dtoped. return image
+					return true; //Rendering already stoped. return image
 
 				case ProgressiveRenderingStatuses.RenderDone + 3:
 					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
 					page.RenderEx(CanvasBitmap, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, pageRotate, renderFlags);
 					return true; //Rendering in non progressive mode
+
+				case ProgressiveRenderingStatuses.RenderDone + 4:
+					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
+					DrawThumbnail(page, pageRect, pageRotate, renderFlags);
+					return true; //Rendering thumbnails
 
 				case ProgressiveRenderingStatuses.RenderTobeContinued:
 					this[page].status = page.ContinueProgressiveRender();
@@ -131,6 +138,23 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					page.CancelProgressiveRender();
 					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
 					return true; //Error occur. Stop rendering. return image with error
+			}
+		}
+
+		private void DrawThumbnail(PdfPage page, Rectangle pageRect, PageRotate pageRotate, RenderFlags renderFlags)
+		{
+			int pw = (int)page.Width;
+			int ph = (int)page.Height;
+			int w = Math.Max(pw, (renderFlags & RenderFlags.FPDF_HQTHUMBNAIL) == RenderFlags.FPDF_HQTHUMBNAIL ? pageRect.Width : pw);
+			int h = Math.Max(ph, (renderFlags & RenderFlags.FPDF_HQTHUMBNAIL) == RenderFlags.FPDF_HQTHUMBNAIL ? pageRect.Height : ph);
+			using (var bmp = new PdfBitmap(w, h, true))
+			{
+				page.RenderEx(bmp, 0, 0, w, h, pageRotate, renderFlags);
+
+				using (var g = Graphics.FromImage(CanvasBitmap.Image))
+				{
+					g.DrawImage(bmp.Image, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height);
+				}
 			}
 		}
 
