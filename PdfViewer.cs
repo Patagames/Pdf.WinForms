@@ -8,7 +8,6 @@ using Patagames.Pdf.Enums;
 using Patagames.Pdf.Net.EventArguments;
 using Patagames.Pdf.Net.Exceptions;
 using System.Runtime.InteropServices;
-using System.ComponentModel;
 
 namespace Patagames.Pdf.Net.Controls.WinForms
 {
@@ -70,7 +69,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private struct CaptureInfo
 		{
 			public PdfForms forms;
-			public ISynchronizeInvoke sync;
+			public System.Threading.SynchronizationContext sync;
 			public Color color;
 		}
 		private CaptureInfo _externalDocCapture;
@@ -2313,9 +2312,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				return ret;
 
 			ret.forms = fillForms;
-			ret.sync = fillForms.SynchronizingObject;
+			ret.sync = fillForms.SynchronizationContext;
 
-			fillForms.SynchronizingObject = this;
+			fillForms.SynchronizationContext = System.Threading.SynchronizationContext.Current;
 			ret.color = fillForms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, _formHighlightColor);
 			fillForms.AppBeep += FormsAppBeep;
 			fillForms.DoGotoAction += FormsDoGotoAction;
@@ -2338,7 +2337,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			captureInfo.forms.Invalidate -= FormsInvalidate;
 			captureInfo.forms.OutputSelectedRect -= FormsOutputSelectedRect;
 			captureInfo.forms.SetCursor -= FormsSetCursor;
-			captureInfo.forms.SynchronizingObject = captureInfo.sync;
+			captureInfo.forms.SynchronizationContext = captureInfo.sync;
 			captureInfo.forms.SetHighlightColor(FormFieldTypes.FPDF_FORMFIELD_UNKNOWN, captureInfo.color);
 		}
 
