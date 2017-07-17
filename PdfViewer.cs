@@ -1499,6 +1499,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <returns>Calculated rectangle</returns>
 		public Rectangle CalcActualRect(int index)
 		{
+			if (_renderRects == null)
+				return default(Rectangle);
+
 			var rect = RFTR(_renderRects[index]);
 			rect.X += AutoScrollPosition.X;
 			rect.Y += AutoScrollPosition.Y;
@@ -1711,6 +1714,21 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Raises the System.Windows.Forms.Control.Paint event.
 		/// </summary>
 		/// <param name="e">A System.Windows.Forms.PaintEventArgs that contains the event data.</param>
+		/// <remarks>
+		/// The page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
+		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// <item><see cref="DrawPageBorder"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// </list>
+		/// </remarks>
 		protected override void OnPaint(PaintEventArgs e)
 		{
 			if (Document != null && _renderRects != null)
@@ -1725,6 +1743,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				_prPages.InitCanvas(ClientSize);
 				bool allPagesAreRendered = true;
 
+				PdfBitmap formsBitmap = null;
 				//Drawing PART 1. Page content into canvas and some other things
 				for (int i = _startPage; i <= _endPage; i++)
 				{
@@ -1748,8 +1767,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					bool isPageDrawn = DrawPage(e.Graphics, Document.Pages[i], actualRect);
 					allPagesAreRendered &= isPageDrawn;
 
-					if(isPageDrawn)  //Draw fill forms
-						DrawFillForms(_prPages.FormsBitmap, Document.Pages[i], actualRect);
+					if (isPageDrawn)  //Draw fill forms
+						DrawFillForms(formsBitmap ?? (formsBitmap = new PdfBitmap(_prPages.CanvasSize.Width, _prPages.CanvasSize.Height, true)), Document.Pages[i], actualRect);
 					else if (ShowLoadingIcon) //or loading icons
 						DrawLoadingIcon(e.Graphics, Document.Pages[i], actualRect);
 
@@ -1758,8 +1777,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				}
 
 				//Draw Canvas bitmap
-				e.Graphics.DrawImageUnscaled(_prPages.CanvasBitmap.Image, 0, 0);
-				e.Graphics.DrawImageUnscaled(_prPages.FormsBitmap.Image, 0, 0);
+				DrawRenderedPagesToDevice(e.Graphics, _prPages.CanvasBitmap, formsBitmap, _prPages.CanvasSize);
+				if (formsBitmap != null)
+					formsBitmap.Dispose();
 
 				//Draw pages separators
 				DrawPageSeparators(e.Graphics, ref separator);
@@ -2005,14 +2025,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawPageBackColor(Graphics graphics, int x, int y, int width, int height)
@@ -2033,14 +2054,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		/// <returns>true if page was rendered; false if any error is occurred or page is still rendering.</returns>
@@ -2062,14 +2084,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawFillForms(PdfBitmap bmp, PdfPage page, Rectangle actualRect)
@@ -2088,14 +2111,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawLoadingIcon(Graphics graphics, PdfPage page, Rectangle actualRect)
@@ -2115,14 +2139,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawPageBorder(Graphics graphics, Rectangle BBox)
@@ -2138,14 +2163,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawFillFormsSelection(Graphics graphics)
@@ -2164,14 +2190,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawTextHighlight(Graphics graphics, List<HighlightInfo> entries, int pageIndex)
@@ -2203,14 +2230,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawTextSelection(Graphics graphics, SelectInfo selInfo, int pageIndex)
@@ -2253,14 +2281,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Full page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawCurrentPageHighlight(Graphics graphics, int pageIndex, Rectangle actualRect)
@@ -2276,6 +2305,50 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		}
 
 		/// <summary>
+		/// Combine two buffers (rendered pages and forms) and draw them to graphics
+		/// </summary>
+		/// <param name="graphics">The drawing surface</param>
+		/// <param name="canvasBitmap">Bitmap with rendered pages</param>
+		/// <param name="formsBitmap">Bitmap with rendered forms</param>
+		/// <param name="canvasSize">Size of buffer</param>
+		/// <remarks>
+		/// This method should combine bitmaps with alpha blending and draw result to graphics surface.
+		/// Full page rendering is performed in the following order:
+		/// <list type="bullet">
+		/// <item><see cref="DrawPageBackColor"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
+		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
+		/// <item><see cref="DrawPageBorder"/></item>
+		/// <item><see cref="DrawFillFormsSelection"/></item>
+		/// <item><see cref="DrawTextHighlight"/></item>
+		/// <item><see cref="DrawTextSelection"/></item>
+		/// <item><see cref="DrawCurrentPageHighlight"/></item>
+		/// </list>
+		/// </remarks>
+		protected virtual void DrawRenderedPagesToDevice(Graphics graphics, PdfBitmap canvasBitmap, PdfBitmap formsBitmap, Size canvasSize)
+		{
+			if (formsBitmap == null)
+				graphics.DrawImageUnscaled(canvasBitmap.Image, 0, 0);
+			else
+			{
+				using (var combinedBitmap = canvasBitmap.Clone())
+				{
+					Pdfium.FPDFBitmap_CompositeBitmap(
+						combinedBitmap.Handle,
+						0, 0,
+						canvasSize.Width, canvasSize.Height,
+						formsBitmap.Handle,
+						0, 0,
+						BlendTypes.FXDIB_BLEND_COLOR);
+					graphics.DrawImageUnscaled(combinedBitmap.Image, 0, 0);
+				}
+			}
+		}
+
+
+		/// <summary>
 		/// Draws pages separatoes.
 		/// </summary>
 		/// <param name="graphics">The drawing surface</param>
@@ -2284,14 +2357,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// The page rendering is performed in the following order:
 		/// <list type="bullet">
 		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> / <see cref="DrawLoadingIcon"/></item>
+		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
 		/// <item><see cref="DrawFillForms"/></item>
+		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
+		/// <item><see cref="DrawPageSeparators"/></item>
 		/// <item><see cref="DrawPageBorder"/></item>
 		/// <item><see cref="DrawFillFormsSelection"/></item>
 		/// <item><see cref="DrawTextHighlight"/></item>
 		/// <item><see cref="DrawTextSelection"/></item>
 		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
 		/// </list>
 		/// </remarks>
 		protected virtual void DrawPageSeparators(Graphics graphics, ref List<Point> separator)

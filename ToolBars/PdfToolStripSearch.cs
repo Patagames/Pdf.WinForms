@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Patagames.Pdf.Enums;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
@@ -36,6 +37,62 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			set
 			{
 				(this.Items["btnSearchBar"] as ToolStripSearchBar).SearchBar.SearchText = value;
+			}
+		}
+
+		/// <summary>
+		/// Gets or sets search flags
+		/// </summary>
+		public FindFlags SearchFlags
+		{
+			get
+			{
+				var tssb = this.Items["btnSearchBar"] as ToolStripSearchBar;
+				if (tssb == null)
+					return FindFlags.None;
+				return tssb.SearchBar.FindFlags;
+			}
+			set
+			{
+				var tssb = this.Items["btnSearchBar"] as ToolStripSearchBar;
+				if (tssb == null)
+					return;
+				tssb.SearchBar.FindFlags = value;
+			}
+		}
+
+		/// <summary>
+		/// Gets or sets the current found record
+		/// </summary>
+		public int CurrentRecord
+		{
+			get
+			{
+				var tssb = this.Items["btnSearchBar"] as ToolStripSearchBar;
+				if (tssb == null)
+					return 0;
+				return tssb.SearchBar.CurrentRecord;
+			}
+			set
+			{
+				var tssb = this.Items["btnSearchBar"] as ToolStripSearchBar;
+				if (tssb == null)
+					return;
+				tssb.SearchBar.CurrentRecord = value;
+			}
+		}
+
+		/// <summary>
+		/// Gets the total number of found records
+		/// </summary>
+		public int TotalRecords
+		{
+			get
+			{
+				var tssb = this.Items["btnSearchBar"] as ToolStripSearchBar;
+				if (tssb == null)
+					return 0;
+				return tssb.SearchBar.TotalRecords;
 			}
 		}
 		#endregion
@@ -158,32 +215,37 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		#region Event handlers for buttons
 		private void SearchBar_NeedSearch(object sender, EventArgs e)
 		{
-			var item = this.Items["btnSearchBar"] as ToolStripSearchBar;
-			OnNeedSearch(item as ToolStripControlHost, item != null ? item.SearchBar.SearchText : "");
+			OnNeedSearch(SearchFlags, SearchText);
 		}
 
 		private void SearchBar_CurrentRecordChanged(object sender, EventArgs e)
 		{
 			var item = this.Items["btnSearchBar"] as ToolStripSearchBar;
-			OnCurrentRecordChanged(item as ToolStripControlHost, item != null ? item.SearchBar.CurrentRecord : 0);
+			OnCurrentRecordChanged(CurrentRecord, TotalRecords);
         }
 
 		#endregion
 
 		#region Protected methods
-		private void OnCurrentRecordChanged(ToolStripControlHost item, int currentRecord)
+		/// <summary>
+		/// Called when current recordchanged
+		/// </summary>
+		/// <param name="currentRecord">The number of current record</param>
+		/// <param name="totalRecords">The total number of records</param>
+		protected virtual void OnCurrentRecordChanged(int currentRecord, int totalRecords)
 		{
 			ScrollToRecord(currentRecord);
 		}
 
-		private void OnNeedSearch(ToolStripControlHost item, string searchText)
+		/// <summary>
+		/// Called when the search routine should be launched
+		/// </summary>
+		/// <param name="searchFlags">Search flags</param>
+		/// <param name="searchText">Text for search</param>
+		protected virtual void OnNeedSearch(FindFlags searchFlags, string searchText)
 		{
-			var tssb = item as ToolStripSearchBar;
-			if (tssb == null)
-				return;
-            StartSearch(tssb.SearchBar, searchText);
+            StartSearch(searchFlags, searchText);
 		}
-
 		#endregion
 
 		#region Private methods
@@ -205,12 +267,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			newValue.DocumentClosed += PdfViewer_DocumentClosed;
 		}
 
-		private void StartSearch(SearchBar sb, string searchText)
+		private void StartSearch(FindFlags searchFlags, string searchText)
 		{
 			StopSearch();
 			if (searchText == "")
 				return;
-            _search.Start(searchText, sb.FindFlags);
+            _search.Start(searchText, searchFlags);
 			_foundTextTimer.Start();
 		}
 
@@ -223,10 +285,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			_foundText.Clear();
 			_forHighlight.Clear();
 			PdfViewer.RemoveHighlightFromText();
-
-			var tssb = this.Items["btnSearchBar"] as ToolStripSearchBar;
-			if (tssb == null)
-				return;
 		}
 
 		private void ScrollToRecord(int currentRecord)
@@ -256,12 +314,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 					PdfViewer.HighlightText(ft.PageIndex, ft.CharIndex, ft.CharsCount, HighlightColor);
 				_forHighlight.Clear();
 			}
-
-
 		}
-
-
-
 		#endregion
 	}
 
