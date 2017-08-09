@@ -66,6 +66,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private bool _skipOnResize = false;
 		private bool _loadedByViewer = true;
 
+		private BlendTypes _formBlendTypes;
+
 		private struct CaptureInfo
 		{
 			public PdfForms forms;
@@ -221,6 +223,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		public event EventHandler LoadingIconTextChanged;
 
+		/// <summary>
+		/// Occurs when the <see cref="FormsBlendMode"/> property has changed.
+		/// </summary>
+		public event EventHandler FormsBlendModeChanged;
 
 		#endregion
 
@@ -518,9 +524,42 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (LoadingIconTextChanged != null)
 				LoadingIconTextChanged(this, e);
 		}
+
+		/// <summary>
+		/// Raises the <see cref="FormsBlendModeChanged"/> event.
+		/// </summary>
+		/// <param name="e">An System.EventArgs that contains the event data.</param>
+		protected virtual void OnFormsBlendModeChanged(EventArgs e)
+		{
+			if (FormsBlendModeChanged != null)
+				FormsBlendModeChanged(this, e);
+		}
 		#endregion
 
 		#region Public properties
+		/// <summary>
+		/// Gets or sets blend mode which is used in drawing of acro forms.
+		/// </summary>
+		/// <remarks>
+		/// <para>Default value: <strong>FXDIB_BLEND_MULTIPLY</strong></para>
+		/// </remarks>
+		public BlendTypes FormsBlendMode
+		{
+			get
+			{
+				return _formBlendTypes;
+			}
+			set
+			{
+				if (_formBlendTypes != value)
+				{
+					_formBlendTypes = value;
+					Invalidate();
+					OnFormsBlendModeChanged(EventArgs.Empty);
+				}
+			}
+		}
+
 		/// <summary>
 		/// Gets or sets the Forms object associated with the current PdfViewer control.
 		/// </summary>
@@ -1646,6 +1685,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			InitializeComponent();
 			DoubleBuffered = true;
 
+			FormsBlendMode = BlendTypes.FXDIB_BLEND_MULTIPLY;
+
 			_fillForms = new PdfForms();
 			CaptureFillForms(_fillForms);
 		}
@@ -2341,7 +2382,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 						canvasSize.Width, canvasSize.Height,
 						formsBitmap.Handle,
 						0, 0,
-						BlendTypes.FXDIB_BLEND_COLOR);
+						FormsBlendMode);
 					graphics.DrawImageUnscaled(combinedBitmap.Image, 0, 0);
 				}
 			}
