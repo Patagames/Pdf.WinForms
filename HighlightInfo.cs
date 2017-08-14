@@ -27,15 +27,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			set
 			{
 				if (_color != value)
-				{
 					_color = value;
-					if (Brush != null)
-						Brush.Dispose();
-					Brush = new SolidBrush(_color);
-				}
 			}
 		}
-
-		internal Brush Brush { get; private set; }
 	}
 }
