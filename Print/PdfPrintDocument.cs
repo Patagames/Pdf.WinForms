@@ -61,7 +61,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 		}
 
-
 		/// <summary>
 		/// Gets or sets the size mode for the pages.
 		/// </summary>
@@ -83,6 +82,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				PrintSizeMode = PrintSizeMode.CustomScale;
 			}
 		}
+
+		/// <summary>
+		/// Gets or sets a combination of <see cref="Patagames.Pdf.Enums.RenderFlags"/> for printing.
+		/// </summary>
+		public RenderFlags RenderFlags { get; set; }
 		#endregion
 
 		#region Constructors, destructors and initialization
@@ -100,6 +104,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			_useDP = (mode == 1);
 			AutoRotate = true;
 			AutoCenter = false;
+			RenderFlags = RenderFlags.FPDF_PRINTING | RenderFlags.FPDF_ANNOT;
 
 			PrinterSettings.MinimumPage = 1;
 			PrinterSettings.MaximumPage = _pdfDoc.Pages.Count;
@@ -216,7 +221,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					(int)(width),
 					(int)(height),
 					rotation,
-					RenderFlags.FPDF_PRINTING | RenderFlags.FPDF_ANNOT);
+					RenderFlags);
 
 				//Print next page
 				if (_pageForPrint < PrinterSettings.ToPage - (_useDP ? PrinterSettings.FromPage : 1))
