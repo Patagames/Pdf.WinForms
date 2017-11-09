@@ -2719,7 +2719,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				xcenter = Padding.Left;
 			if (ycenter < Padding.Top)
 				ycenter = Padding.Top;
-			
+
+			if (xright < Padding.Left)
+				xright = Padding.Left;
+
 			switch(PageAlign)
 			{
 				case ContentAlignment.TopLeft: return new PointF(xleft, ytop);
@@ -2888,7 +2891,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			{
 				float x = 0;
 				float y = maxY;
-				for (int j = i; j < i + TilesCount; j++)
+				int j;
+				for (j = i; j < i + TilesCount; j++)
 				{
 					if (j >= _renderRects.Length)
 						break;
@@ -2909,6 +2913,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					if (maxX < _renderRects[j].X + _renderRects[j].Width + (j == i + TilesCount - 1 ? 0 : PageMargin.Right))
 						maxX = _renderRects[j].X + _renderRects[j].Width + (j == i + TilesCount - 1 ? 0 : PageMargin.Right);
 				}
+				//repositioning the line of tiles
+				var loc = GetRenderLocation(new SizeF(_renderRects[j-1].Right - _renderRects[i].Left, 0));
+				var offset = loc.X - _renderRects[i].Left;
+				for (int k = i; k < j; k++)
+					_renderRects[k].X += offset;
 			}
 			return new SizeF(maxX+Padding.Right, maxY+Padding.Bottom);
 		}
