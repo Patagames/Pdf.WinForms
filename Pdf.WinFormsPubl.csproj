@@ -79,6 +79,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>PdfToolStrip.resx</DependentUpon>
     </Compile>
+    <Compile Include="RenderRect.cs" />
     <Compile Include="SelectInfo.cs" />
     <Compile Include="SizeModes.cs" />
     <Compile Include="ToolBars\PdfToolStrip.cs">
