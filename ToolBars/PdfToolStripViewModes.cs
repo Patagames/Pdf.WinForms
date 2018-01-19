@@ -8,6 +8,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 	/// </summary>
 	public class PdfToolStripViewModes : PdfToolStrip
 	{
+        int _tilesCount = -1;
 		#region Overriding
 		/// <summary>
 		/// Create all buttons and add its into toolbar. Override this method to create custom buttons
@@ -45,12 +46,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 				btn_ModeTilesClick,
 				System.Windows.Forms.ToolStripItemDisplayStyle.Image);
 			this.Items.Add(btn);
-		}
 
-		/// <summary>
-		/// Called when the ToolStrip's items need to change its states
-		/// </summary>
-		protected override void UpdateButtons()
+            btn = CreateButton("btnModeTwoPage",
+                Properties.PdfToolStrip.btnModeTwoPageText,
+                Properties.PdfToolStrip.btnModeTwoPageToolTipText,
+                Properties.PdfToolStrip.btnModeTwoPage,
+                btn_ModeTwoPageClick,
+                System.Windows.Forms.ToolStripItemDisplayStyle.Image);
+            this.Items.Add(btn);
+        }
+
+        /// <summary>
+        /// Called when the ToolStrip's items need to change its states
+        /// </summary>
+        protected override void UpdateButtons()
 		{
 			var tsi = this.Items["btnModeSingle"];
 			if (tsi != null)
@@ -68,7 +77,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			if (tsi != null)
 				tsi.Enabled = (PdfViewer != null) && (PdfViewer.Document != null);
 
-			if (PdfViewer == null || PdfViewer.Document == null)
+            tsi = this.Items["btnModeTwoPage"];
+            if (tsi != null)
+                tsi.Enabled = (PdfViewer != null) && (PdfViewer.Document != null);
+
+
+            if (PdfViewer == null || PdfViewer.Document == null)
 				return;
 
 			var tsb = this.Items["btnModeSingle"] as ToolStripButton;
@@ -87,20 +101,24 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			if (tsb != null)
 				tsb.Checked = (PdfViewer.ViewMode == ViewModes.TilesVertical);
 
-		}
+            tsb = this.Items["btnModeTwoPage"] as ToolStripButton;
+            if (tsb != null)
+                tsb.Checked = (PdfViewer.ViewMode == ViewModes.TilesLine);
 
-		/// <summary>
-		/// Called when the current PdfViewer control associated with the ToolStrip is changing.
-		/// </summary>
-		/// <param name="oldValue">PdfViewer control of which was associated with the ToolStrip.</param>
-		/// <param name="newValue">PdfViewer control of which will be associated with the ToolStrip.</param>
-		protected override void OnPdfViewerChanging(PdfViewer oldValue, PdfViewer newValue)
+        }
+
+        /// <summary>
+        /// Called when the current PdfViewer control associated with the ToolStrip is changing.
+        /// </summary>
+        /// <param name="oldValue">PdfViewer control of which was associated with the ToolStrip.</param>
+        /// <param name="newValue">PdfViewer control of which will be associated with the ToolStrip.</param>
+        protected override void OnPdfViewerChanging(PdfViewer oldValue, PdfViewer newValue)
 		{
 			base.OnPdfViewerChanging(oldValue, newValue);
 			if (oldValue != null)
 				UnsubscribePdfViewEvents(oldValue);
-			if (newValue != null)
-				SubscribePdfViewEvents(newValue);
+            if (newValue != null)
+                SubscribePdfViewEvents(newValue);
 		}
 
 		#endregion
@@ -129,14 +147,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		{
 			OnModeTilesClick(this.Items["btnModeTiles"] as ToolStripButton);
 		}
-		#endregion
+        private void btn_ModeTwoPageClick(object sender, System.EventArgs e)
+        {
+            OnModeTwoPageClick(this.Items["btnModeTwoPage"] as ToolStripButton);
+        }
+        #endregion
 
-		#region Protected methods
-		/// <summary>
-		/// Occurs when the Single Page button is clicked
-		/// </summary>
-		/// <param name="item">The item that has been clicked</param>
-		protected virtual void OnModeSingleClick(ToolStripButton item)
+        #region Protected methods
+        /// <summary>
+        /// Occurs when the Single Page button is clicked
+        /// </summary>
+        /// <param name="item">The item that has been clicked</param>
+        protected virtual void OnModeSingleClick(ToolStripButton item)
 		{
 			PdfViewer.ViewMode = ViewModes.SinglePage;
 		}
@@ -165,13 +187,25 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		/// <param name="item">The item that has been clicked</param>
 		protected virtual void OnModeTilesClick(ToolStripButton item)
 		{
-			PdfViewer.ViewMode = ViewModes.TilesVertical;
+            if(_tilesCount!= -1)
+                PdfViewer.TilesCount = _tilesCount;
+            PdfViewer.ViewMode = ViewModes.TilesVertical;
 		}
 
-		#endregion
+        /// <summary>
+        /// Occurs when the Facing button is clicked
+        /// </summary>
+        /// <param name="item">The item that has been clicked</param>
+        protected virtual void OnModeTwoPageClick(ToolStripButton item)
+        {
+            _tilesCount = PdfViewer.TilesCount;
+            PdfViewer.TilesCount = 2;
+            PdfViewer.ViewMode = ViewModes.TilesLine;
+        }
+        #endregion
 
-		#region Private methods
-		private void UnsubscribePdfViewEvents(PdfViewer oldValue)
+        #region Private methods
+        private void UnsubscribePdfViewEvents(PdfViewer oldValue)
 		{
 			oldValue.AfterDocumentChanged -= PdfViewer_SomethingChanged;
 			oldValue.DocumentLoaded -= PdfViewer_SomethingChanged;

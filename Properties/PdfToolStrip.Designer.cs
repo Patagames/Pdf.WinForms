@@ -392,6 +392,34 @@ namespace Patagames.Pdf.Net.Controls.WinForms.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap btnModeTwoPage {
+            get {
+                object obj = ResourceManager.GetObject("btnModeTwoPage", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Facing.
+        /// </summary>
+        internal static string btnModeTwoPageText {
+            get {
+                return ResourceManager.GetString("btnModeTwoPageText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to View two pages side-by-side.
+        /// </summary>
+        internal static string btnModeTwoPageToolTipText {
+            get {
+                return ResourceManager.GetString("btnModeTwoPageToolTipText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap btnModeVerticalImage {
             get {
                 object obj = ResourceManager.GetObject("btnModeVerticalImage", resourceCulture);

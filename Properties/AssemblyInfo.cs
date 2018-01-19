@@ -47,13 +47,36 @@ using System.Runtime.InteropServices;
 [assembly: Guid("3ee5b54a-d560-4066-8882-939b9cbf611d")]
 
 // Version information for an assembly consists of the following four values:
-//
 //      Major Version
-//      Minor Version 
-//      Build Number
-//      Revision
-//
-// You can specify all the values or you can default the Build and Revision Numbers 
-// by using the '*' as shown below:
-// [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("3.12.5.0")]
+//      Minor Version - Improvments
+//      Build Number - BugFixes
+//      Revision -.Net framework
+
+[assembly: AssemblyInformationalVersion("3.14.2704")]  //Should be equal to save property of Patagames.Pdf assembly
+[assembly: AssemblyVersion("3.14.1."+
+#if DOTNET20
+"20"
+#elif DOTNET30
+"30"
+#elif DOTNET35
+"35"
+#elif DOTNET40
+"40"
+#elif DOTNET45
+"45"
+#elif DOTNET451
+"451"
+#elif DOTNET452
+"452"
+#elif DOTNET46
+"46"
+#elif DOTNET461
+"461"
+#elif DOTNET462
+"462"
+#elif DOTNET47
+"47"
+#else
+"0"
+#endif
+)]

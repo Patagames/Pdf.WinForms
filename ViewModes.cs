@@ -5,24 +5,34 @@
 	/// </summary>
 	public enum ViewModes
 	{
-		/// <summary>
-		/// The vertical arrangement of pages
-		/// </summary>
-		Vertical,
+        /// <summary>
+        /// View pages continuously with scrolling enabled
+        /// </summary>
+        Vertical,
 
-		/// <summary>
-		/// The horizontal arrangement of pages
-		/// </summary>
-		Horizontal,
+        /// <summary>
+        /// View pages continuously with scrolling at horizontal dimension
+        /// </summary>
+        Horizontal,
 
-		/// <summary>
-		/// Vertical-oriented tiles
-		/// </summary>
-		TilesVertical,
+        /// <summary>
+        /// View pages side-by-side with continuous scrolling enabled
+        /// </summary>
+        TilesVertical,
 
-		/// <summary>
-		/// Displays the current page
-		/// </summary>
-		SinglePage
-	}
+        /// <summary>
+        /// View pages side-by-side with continuous scrolling at horizontal dimension
+        /// </summary>
+        TilesHorizontal,
+
+        /// <summary>
+        /// View one page at a time.
+        /// </summary>
+        SinglePage,
+
+        /// <summary>
+        /// View pages side-by-side
+        /// </summary>
+        TilesLine
+    }
 }
