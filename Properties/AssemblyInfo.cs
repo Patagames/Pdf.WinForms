@@ -52,8 +52,8 @@ using System.Runtime.InteropServices;
 //      Build Number - BugFixes
 //      Revision -.Net framework
 
-[assembly: AssemblyInformationalVersion("3.14.2704")]  //Should be equal to save property of Patagames.Pdf assembly
-[assembly: AssemblyVersion("3.14.1."+
+[assembly: AssemblyInformationalVersion("3.15.2704")]  //Should be equal to save property of Patagames.Pdf assembly
+[assembly: AssemblyVersion("3.14.2."+
 #if DOTNET20
 "20"
 #elif DOTNET30
