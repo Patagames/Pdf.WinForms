@@ -2811,16 +2811,24 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             w = w / 72.0 * GetDpi();
             h = h / 72.0 * GetDpi();
 
+            SizeF ret;
             switch (ViewMode)
             {
                 case ViewModes.TilesLine:
                 case ViewModes.TilesVertical:
-                    return CalcAppropriateSize(w, h, cSize.Width / TilesCount - Padding.Horizontal, cSize.Height - Padding.Vertical);
+                    ret= CalcAppropriateSize(w, h, cSize.Width / TilesCount - Padding.Horizontal, cSize.Height - Padding.Vertical);
+                    break;
                 case ViewModes.TilesHorizontal:
-                    return CalcAppropriateSize(w, h, cSize.Width - Padding.Horizontal, cSize.Height / TilesCount - Padding.Vertical);
+                    ret = CalcAppropriateSize(w, h, cSize.Width - Padding.Horizontal, cSize.Height / TilesCount - Padding.Vertical);
+                    break;
                 default:
-                    return CalcAppropriateSize(w, h, cSize.Width - Padding.Horizontal, cSize.Height - Padding.Vertical);
+                    ret = CalcAppropriateSize(w, h, cSize.Width - Padding.Horizontal, cSize.Height - Padding.Vertical);
+                    break;
             }
+
+            if (SizeMode != SizeModes.Zoom)
+                Zoom = (float)(w / ret.Width);
+            return ret;
 		}
 
 		private SizeF CalcAppropriateSize(double w, double h, double fitWidth, double fitHeight)
