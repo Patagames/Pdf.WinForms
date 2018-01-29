@@ -2827,7 +2827,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             }
 
             if (SizeMode != SizeModes.Zoom)
-                Zoom = (float)(w / ret.Width);
+                _zoom = (float)(w / ret.Width);
             return ret;
 		}
 
@@ -3243,6 +3243,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 
             UpdateScrollBars(size);
+
+            //We should do this because we recalculate ZOOM in GetRenderRect which is called fromm Calc* methods
+            if (SizeMode != SizeModes.Zoom)
+                OnZoomChanged(EventArgs.Empty);
         }
 
         private void UpdateScrollBars(SizeF size)
