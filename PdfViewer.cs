@@ -111,13 +111,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		private PointF _scrollPoint;
 		private bool _scrollPointSaved;
-		#endregion
+        private bool _smoothSelection;
+        #endregion
 
-		#region Events
-		/// <summary>
-		/// Occurs whenever the Document property is changed.
-		/// </summary>
-		public event EventHandler AfterDocumentChanged;
+        #region Events
+        /// <summary>
+        /// Occurs whenever the Document property is changed.
+        /// </summary>
+        public event EventHandler AfterDocumentChanged;
 
 		/// <summary>
 		/// Occurs immediately before the document property would be changed.
@@ -264,14 +265,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		public event EventHandler FormsBlendModeChanged;
 
-		#endregion
+        #endregion
 
-		#region Event raises
-		/// <summary>
-		/// Raises the <see cref="AfterDocumentChanged"/> event.
-		/// </summary>
-		/// <param name="e">An System.EventArgs that contains the event data.</param>
-		protected virtual void OnAfterDocumentChanged(EventArgs e)
+        #region Event raises
+        /// <summary>
+        /// Raises the <see cref="AfterDocumentChanged"/> event.
+        /// </summary>
+        /// <param name="e">An System.EventArgs that contains the event data.</param>
+        protected virtual void OnAfterDocumentChanged(EventArgs e)
 		{
 			if (AfterDocumentChanged != null)
 				AfterDocumentChanged(this, e);
@@ -1694,6 +1695,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			DoubleBuffered = true;
 			FormsBlendMode = BlendTypes.FXDIB_BLEND_MULTIPLY;
 			OptimizedLoadThreshold = 1000;
+            _smoothSelection = true;
 
 			InitializeComponent();
 
@@ -2248,47 +2250,39 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				return;
 
 			foreach (var e in entries)
-			{
-				var textInfo = Document.Pages[pageIndex].Text.GetTextInfo(e.CharIndex, e.CharsCount);
-				foreach (var rc in textInfo.Rects)
-				{
-					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
-					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
-					int x = pt1.X < pt2.X ? pt1.X : pt2.X;
-					int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
-					int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
-					int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
+            {
+                var textInfo = Document.Pages[pageIndex].Text.GetTextInfo(e.CharIndex, e.CharsCount);
+                var rects = NormalizeRects(textInfo.Rects, pageIndex);
+                foreach (var r in rects)
+                    bitmap.FillRect(r.Left, r.Top, r.Width, r.Height, e.Color, FormsBlendMode);
+            }
+        }
 
-					bitmap.FillRect(x, y, w, h, e.Color, FormsBlendMode);
-				}
-			}
-		}
-
-		/// <summary>
-		/// Draws text selection
-		/// </summary>
-		/// <param name="bitmap">The drawing surface</param>
-		/// <param name="selInfo">Selection info</param>
-		/// <param name="pageIndex">Page index to be drawn</param>
-		/// <remarks>
-		/// Full page rendering is performed in the following order:
-		/// <list type="bullet">
-		/// <item><see cref="DrawPageBackColor"/></item>
-		/// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
-		/// <item><see cref="DrawFillForms"/></item>
-		/// <item><see cref="DrawFillFormsSelection(PdfBitmap, List{Rectangle})"/></item>
-		/// <item><see cref="DrawTextHighlight(PdfBitmap, List{HighlightInfo}, int)"/></item>
-		/// <item><see cref="DrawTextSelection(PdfBitmap, SelectInfo, int)"/></item>
-		/// <item><see cref="DrawRenderedPagesToDevice"/></item>
-		/// <item><see cref="DrawPageSeparators"/></item>
-		/// <item><see cref="DrawPageBorder"/></item>
-		/// <item><see cref="DrawFillFormsSelection(Graphics, List{Rectangle})"/></item>
-		/// <item><see cref="DrawTextHighlight(Graphics, List{HighlightInfo}, int)"/></item>
-		/// <item><see cref="DrawTextSelection(Graphics, SelectInfo, int)"/></item>
-		/// <item><see cref="DrawCurrentPageHighlight"/></item>
-		/// </list>
-		/// </remarks>
-		protected virtual void DrawTextSelection(PdfBitmap bitmap, SelectInfo selInfo, int pageIndex)
+        /// <summary>
+        /// Draws text selection
+        /// </summary>
+        /// <param name="bitmap">The drawing surface</param>
+        /// <param name="selInfo">Selection info</param>
+        /// <param name="pageIndex">Page index to be drawn</param>
+        /// <remarks>
+        /// Full page rendering is performed in the following order:
+        /// <list type="bullet">
+        /// <item><see cref="DrawPageBackColor"/></item>
+        /// <item><see cref="DrawPage"/> or <see cref="DrawLoadingIcon"/> if page is still drawing</item>
+        /// <item><see cref="DrawFillForms"/></item>
+        /// <item><see cref="DrawFillFormsSelection(PdfBitmap, List{Rectangle})"/></item>
+        /// <item><see cref="DrawTextHighlight(PdfBitmap, List{HighlightInfo}, int)"/></item>
+        /// <item><see cref="DrawTextSelection(PdfBitmap, SelectInfo, int)"/></item>
+        /// <item><see cref="DrawRenderedPagesToDevice"/></item>
+        /// <item><see cref="DrawPageSeparators"/></item>
+        /// <item><see cref="DrawPageBorder"/></item>
+        /// <item><see cref="DrawFillFormsSelection(Graphics, List{Rectangle})"/></item>
+        /// <item><see cref="DrawTextHighlight(Graphics, List{HighlightInfo}, int)"/></item>
+        /// <item><see cref="DrawTextSelection(Graphics, SelectInfo, int)"/></item>
+        /// <item><see cref="DrawCurrentPageHighlight"/></item>
+        /// </list>
+        /// </remarks>
+        protected virtual void DrawTextSelection(PdfBitmap bitmap, SelectInfo selInfo, int pageIndex)
 		{
 			if (selInfo.StartPage < 0 || !_isShowSelection)
 				return;
@@ -2303,18 +2297,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					len = (selInfo.EndIndex + 1) - s;
 
 				var ti = Document.Pages[pageIndex].Text.GetTextInfo(s, len);
-				foreach (var rc in ti.Rects)
-				{
-					var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
-					var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
-
-					int x = pt1.X < pt2.X ? pt1.X : pt2.X;
-					int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
-					int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
-					int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
-
-					bitmap.FillRect(x, y, w, h, TextSelectColor, FormsBlendMode);
-				}
+                var rects = NormalizeRects(ti.Rects, pageIndex);
+                foreach (var r in rects)
+					bitmap.FillRect(r.X, r.Y, r.Width, r.Height, TextSelectColor, FormsBlendMode);
 			}
 		}
 
@@ -2563,10 +2548,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			for (int sep = 0; sep < separator.Count; sep += 2)
 				graphics.DrawLine(_pageSeparatorColorPen, separator[sep], separator[sep + 1]);
 		}
-		#endregion
+        #endregion
 
-		#region Private methods
-		private void SaveScrollPoint()
+        #region Private methods
+        private void SaveScrollPoint()
 		{
 			_scrollPointSaved = false;
 			if (_renderRects != null)
@@ -2927,7 +2912,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     x, y);
 		}
 
-		private PageRotate PageRotation(PdfPage pdfPage)
+        private Rectangle PageToDeviceRect(FS_RECTF rc, int pageIndex)
+        {
+            var pt1 = PageToDevice(rc.left, rc.top, pageIndex);
+            var pt2 = PageToDevice(rc.right, rc.bottom, pageIndex);
+            int x = pt1.X < pt2.X ? pt1.X : pt2.X;
+            int y = pt1.Y < pt2.Y ? pt1.Y : pt2.Y;
+            int w = pt1.X > pt2.X ? pt1.X - pt2.X : pt2.X - pt1.X;
+            int h = pt1.Y > pt2.Y ? pt1.Y - pt2.Y : pt2.Y - pt1.Y;
+            return new Rectangle(x, y, w, h);
+        }
+
+        private PageRotate PageRotation(PdfPage pdfPage)
 		{
 			int rot = pdfPage.Rotation - pdfPage.OriginalRotation;
 			if (rot < 0)
@@ -2964,7 +2960,65 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			return selTmp;
 		}
 
-		private SizeF CalcVertical()
+        private List<Rectangle> NormalizeRects(IEnumerable<FS_RECTF> rects, int pageIndex)
+        {
+            List<Rectangle> rows = new List<Rectangle>();
+
+            if (!_smoothSelection)
+            {
+                foreach (var rc in rects)
+                    rows.Add(PageToDeviceRect(rc, pageIndex));
+                return rows;
+            }
+
+            int left, right, top, bottom;
+            left = top = int.MaxValue;
+            right = bottom = int.MinValue;
+            float lowestBottom = float.NaN;
+            float highestTop = float.NaN;
+
+            foreach (var rc in rects)
+            {
+                //check if new row is required
+                if (float.IsNaN(lowestBottom))
+                {
+                    lowestBottom = rc.bottom;
+                    highestTop = rc.top;
+                }
+                else if (rc.top < lowestBottom || rc.bottom > highestTop)
+                {
+                    rows.Add(new Rectangle(left, top, right - left, bottom - top));
+                    lowestBottom = rc.bottom;
+                    highestTop = rc.top;
+                    left = top = int.MaxValue;
+                    right = bottom = int.MinValue;
+                }
+                else
+                {
+                    if (lowestBottom > rc.bottom)
+                        lowestBottom = rc.bottom;
+                    if (highestTop < rc.top)
+                        highestTop = rc.top;
+                }
+
+                //calc client coordinates
+                Rectangle deviceRect = PageToDeviceRect(rc, pageIndex);
+
+                //concatenate previous and current rectangle
+                if (left > deviceRect.X)
+                    left = deviceRect.X;
+                if (right < deviceRect.X + deviceRect.Width)
+                    right = deviceRect.X + deviceRect.Width;
+                if (top > deviceRect.Y)
+                    top = deviceRect.Y;
+                if (bottom < deviceRect.Y + deviceRect.Height)
+                    bottom = deviceRect.Y + deviceRect.Height;
+            }
+            rows.Add(new Rectangle(left, top, right - left, bottom - top));
+            return rows;
+        }
+
+        private SizeF CalcVertical()
 		{
 			float width = 0;
 			RectangleF rrect = RectangleF.Empty;
