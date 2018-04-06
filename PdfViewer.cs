@@ -1807,7 +1807,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					Rectangle actualRect = CalcActualRect(i);
 					if (!actualRect.IntersectsWith(ClientRectangle))
 					{
-                        if (PageAutoDispose && !_highlightedText.ContainsKey(i) && (_selectInfo.StartPage > i || _selectInfo.EndPage < i))
+                        if (PageAutoDispose && CanDisposePage(i))
                             Document.Pages[i].Dispose();  //do not dispose the page if it contains highlighted  or selected text. fix for #052325
                         continue; //Page is invisible. Skip it
 					}
@@ -2551,6 +2551,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         #endregion
 
         #region Private methods
+        private bool CanDisposePage(int i)
+        {
+            if (_highlightedText.ContainsKey(i))
+                return false;
+            if (_selectInfo.StartPage < 0 || _selectInfo.EndPage < 0 || _selectInfo.StartIndex < 0 || _selectInfo.EndIndex < 0)
+                return true;
+            if (_selectInfo.StartPage >= i && _selectInfo.EndPage <= i)
+                return false;
+
+            return true;
+        }
+
         private void SaveScrollPoint()
 		{
 			_scrollPointSaved = false;
@@ -3208,9 +3220,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
                     if (ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine)
                         UpdateScrollBars(new SizeF(_renderRects[_endPage].Right + Padding.Right, _renderRects[IdxWithLowestBottom(_startPage, _endPage)].Bottom + Padding.Bottom));
-                    if((ViewMode== ViewModes.SinglePage || ViewMode== ViewModes.TilesLine) && _startPage!= prevStart)
-                        for(int i=prevStart; i<= prevEnd; i++)
-                            Document.Pages[i].Dispose();
+                    if ((ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine) && _startPage != prevStart)
+                        for (int i = prevStart; i <= prevEnd; i++)
+                        {
+                            if (PageAutoDispose && CanDisposePage(i))
+                                Document.Pages[i].Dispose();
+                        }
                 }
             }
             finally
