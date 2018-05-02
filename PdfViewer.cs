@@ -634,10 +634,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 						_document.Pages.PageInserted -= Pages_PageInserted;
 						_document.Pages.PageDeleted -= Pages_PageDeleted;
 						_document.Pages.ProgressiveRender -= Pages_ProgressiveRender;
-                        if (_document.FormFill == _fillForms)
-                            _document.FormFill = null;
-
-                    }
+					}
 					SetScrollExtent(0, 0);
 					_selectInfo = new SelectInfo() { StartPage = -1 };
 					_highlightedText.Clear();
@@ -650,10 +647,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					UpdateLayout();
 					if (_document != null)
 					{
-                        if (_document.FormFill == null)
-                            _document.FormFill = _fillForms;
-
-                        if (_document.FormFill != _fillForms)
+						if (_document.FormFill != _fillForms)
 							_externalDocCapture = CaptureFillForms(_document.FormFill);
 						_document.Pages.CurrentPageChanged += Pages_CurrentPageChanged;
 						_document.Pages.PageInserted += Pages_PageInserted;
@@ -2588,8 +2582,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		private CaptureInfo CaptureFillForms(PdfForms fillForms)
 		{
 			var ret = new CaptureInfo();
-            if (fillForms == null)
-                return ret;
+			if (fillForms == null)
+				return ret;
 
 			ret.forms = fillForms;
 			ret.sync = fillForms.SynchronizationContext;
