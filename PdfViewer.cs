@@ -1187,7 +1187,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 }
                 Invalidate();
             }
-            else
+            else if (_renderRects!= null)
             {
                 var rect = RFTR(_renderRects[index]);
                 SetScrollPos(rect.X, rect.Y);
@@ -1579,16 +1579,27 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </remarks>
 		public void LoadDocument(string path, string password = null)
 		{
-			try {
+            PdfDocument doc = null;
+			try
+            {
 				CloseDocument();
-				Document = PdfDocument.Load(path, _fillForms, password);
-				_loadedByViewer = true;
+                if (Document != null)
+                    return; //closing or changing was canceled
+                Document = doc = PdfDocument.Load(path, _fillForms, password);
+                if (Document == null)
+                    return; //closing or changing was canceled
+                _loadedByViewer = true;
 				OnDocumentLoaded(EventArgs.Empty);
 			}
 			catch (NoLicenseException ex)
 			{
 				MessageBox.Show(this, ex.Message, Properties.Error.ErrorHeader, MessageBoxButtons.OK, MessageBoxIcon.Information);
 			}
+            finally
+            {
+                if (Document == null && doc != null)
+                    doc.Dispose();
+            }
 		}
 
 		/// <summary>
@@ -1611,18 +1622,28 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </remarks>
 		public void LoadDocument(Stream stream, string password = null)
 		{
-			try {
+            PdfDocument doc = null;
+            try
+            {
 				CloseDocument();
-				Document = PdfDocument.Load(stream, _fillForms, password);
-				_loadedByViewer = true;
-				OnDocumentLoaded(EventArgs.Empty);
+                if (Document != null)
+                    return; //closing or changing was canceled
+                Document = doc = PdfDocument.Load(stream, _fillForms, password);
+                if (Document == null)
+                    return; //closing or changing was canceled
+                _loadedByViewer = true;
+                OnDocumentLoaded(EventArgs.Empty);
 			}
 			catch (NoLicenseException ex)
 			{
 				MessageBox.Show(this, ex.Message, Properties.Error.ErrorHeader, MessageBoxButtons.OK, MessageBoxIcon.Information);
 			}
-
-		}
+            finally
+            {
+                if (Document == null && doc != null)
+                    doc.Dispose();
+            }
+        }
 
 		/// <summary>
 		/// Loads the PDF document from the specified byte array.
@@ -1644,18 +1665,28 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </remarks>
 		public void LoadDocument(byte[] pdf, string password = null)
 		{
-			try {
+            PdfDocument doc = null;
+            try
+            {
 				CloseDocument();
-				Document = PdfDocument.Load(pdf, _fillForms, password);
-				_loadedByViewer = true;
+                if (Document != null)
+                    return; //closing or changing was canceled
+                Document = doc = PdfDocument.Load(pdf, _fillForms, password);
+                if (Document == null)
+                    return; //closing or changing was canceled
+                _loadedByViewer = true;
 				OnDocumentLoaded(EventArgs.Empty);
 			}
 			catch (NoLicenseException ex)
 			{
 				MessageBox.Show(this, ex.Message, Properties.Error.InfoHeader, MessageBoxButtons.OK, MessageBoxIcon.Information);
 			}
-
-		}
+            finally
+            {
+                if (Document == null && doc != null)
+                    doc.Dispose();
+            }
+        }
 
 		/// <summary>
 		/// Close a loaded PDF document.
