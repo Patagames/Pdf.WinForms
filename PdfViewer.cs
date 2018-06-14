@@ -655,7 +655,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 						_document.Pages.ProgressiveRender += Pages_ProgressiveRender;
 						SetCurrentPage(_onstartPageIndex);
 						if (_document.Pages.Count > 0)
-							ScrollToPage(_onstartPageIndex);
+                            if (_onstartPageIndex != 0)
+                                ScrollToPage(_onstartPageIndex);
+                            else
+                                AutoScrollPosition = new Point(0, 0);
 					}
 					OnAfterDocumentChanged(EventArgs.Empty);
 				}
