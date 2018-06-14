@@ -20,7 +20,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			if (_canvasBitmap == null)
 			{
-				_canvasBitmap = new PdfBitmap(size.Width, size.Height, false);
+				_canvasBitmap = new PdfBitmap(size.Width, size.Height, false, true);
 				CanvasSize = size;
 			}
 
