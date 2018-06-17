@@ -2269,7 +2269,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// <param name="graphics">The drawing surface</param>
         /// <param name="BBox">Page's bounding box</param>
         /// <remarks>
-        /// <remarks>
         /// Please see the remarks section of <see cref="OnPaint"/> for getting more info about page rendering order.
         /// </remarks>
         protected virtual void DrawPageBorder(Graphics graphics, Rectangle BBox)
