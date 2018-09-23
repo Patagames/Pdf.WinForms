@@ -5,10 +5,11 @@ using System.Drawing.Printing;
 
 namespace Patagames.Pdf.Net.Controls.WinForms
 {
-	/// <summary>
-	/// Defines a reusable object that sends output to a printer, when printing from a Windows Forms application.
-	/// </summary>
-	public class PdfPrintDocument : PrintDocument
+    /// <summary>
+    /// Defines a reusable object that sends output to a printer, when printing from a Windows Forms application.
+    /// </summary>
+    /// <seealso href="https://pdfium.patagames.com/c-pdf-library/">Printing PDF Files With C#</seealso>
+    public class PdfPrintDocument : PrintDocument
 	{
 		#region Private members
 		PdfDocument _pdfDoc;
@@ -127,13 +128,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				BeforeRenderPage(this, new BeforeRenderPageEventArgs(page, width, height, rotation));
 		}
 
-		/// <summary>
-		/// Raises the System.Drawing.Printing.PrintDocument.BeginPrint event. It is called
-		/// after the System.Drawing.Printing.PrintDocument.Print method is called and before
-		/// the first page of the document prints.
-		/// </summary>
-		/// <param name="e">A System.Drawing.Printing.PrintEventArgs that contains the event data.</param>
-		protected override void OnBeginPrint(PrintEventArgs e)
+        /// <summary>
+        /// Raises the System.Drawing.Printing.PrintDocument.BeginPrint event. It is called
+        /// after the System.Drawing.Printing.PrintDocument.Print method is called and before
+        /// the first page of the document prints.
+        /// </summary>
+        /// <param name="e">A System.Drawing.Printing.PrintEventArgs that contains the event data.</param>
+        /// <seealso href="https://pdfium.patagames.com/c-pdf-library/">C# Print PDF</seealso>
+        protected override void OnBeginPrint(PrintEventArgs e)
 		{
 			base.OnBeginPrint(e);
 
@@ -162,12 +164,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			_pageForPrint = _useDP ? 0 : PrinterSettings.FromPage - 1;
 		}
 
-		/// <summary>
-		/// Raises the System.Drawing.Printing.PrintDocument.EndPrint event. It is called
-		/// when the last page of the document has printed.
-		/// </summary>
-		/// <param name="e">A System.Drawing.Printing.PrintEventArgs that contains the event data.</param>
-		protected override void OnEndPrint(PrintEventArgs e)
+        /// <summary>
+        /// Raises the System.Drawing.Printing.PrintDocument.EndPrint event. It is called
+        /// when the last page of the document has printed.
+        /// </summary>
+        /// <param name="e">A System.Drawing.Printing.PrintEventArgs that contains the event data.</param>
+        /// <seealso href="https://pdfium.patagames.com/c-pdf-library/">C# Print PDF</seealso>
+        protected override void OnEndPrint(PrintEventArgs e)
 		{
 			base.OnEndPrint(e);
 
@@ -176,12 +179,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			_printHandle = IntPtr.Zero;
 		}
 
-		/// <summary>
-		/// Raises the System.Drawing.Printing.PrintDocument.PrintPage event. It is called
-		/// before a page prints.
-		/// </summary>
-		/// <param name="e"> A System.Drawing.Printing.PrintPageEventArgs that contains the event data.</param>
-		protected override void OnPrintPage(PrintPageEventArgs e)
+        /// <summary>
+        /// Raises the System.Drawing.Printing.PrintDocument.PrintPage event. It is called
+        /// before a page prints.
+        /// </summary>
+        /// <param name="e"> A System.Drawing.Printing.PrintPageEventArgs that contains the event data.</param>
+        /// <seealso href="https://pdfium.patagames.com/c-pdf-library/">C# Print PDF</seealso>
+        protected override void OnPrintPage(PrintPageEventArgs e)
 		{
 			base.OnPrintPage(e);
 
