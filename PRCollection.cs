@@ -96,7 +96,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             PdfBitmap bitmap = this[page].Bitmap;
             bool ret = ProcessExisting(bitmap ?? CanvasBitmap, page, pageRect, pageRotate, renderFlags);
             if (bitmap != null)
-                Pdfium.FPDFBitmap_TransferBitmap(CanvasBitmap.Handle, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, bitmap.Handle, pageRect.X, pageRect.Y);
+                Pdfium.FPDFBitmap_CompositeBitmap(CanvasBitmap.Handle, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, bitmap.Handle, pageRect.X, pageRect.Y, BlendTypes.FXDIB_BLEND_NORMAL);
             return ret;
 		}
 
