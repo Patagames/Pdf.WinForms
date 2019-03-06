@@ -138,8 +138,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				case ProgressiveRenderingStatuses.RenderFailed:
 				default:
-                    bitmap.FillRect(pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, Color.Red);
-                    bitmap.FillRect(pageRect.X + 5, pageRect.Y + 5, pageRect.Width - 10, pageRect.Height - 10, Color.White);
+                    bitmap.FillRectEx(pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, Color.Red.ToArgb());
+                    bitmap.FillRectEx(pageRect.X + 5, pageRect.Y + 5, pageRect.Width - 10, pageRect.Height - 10, Color.White.ToArgb());
 					page.CancelProgressiveRender();
 					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
 					return true; //An error has occurred. Stop rendering. return special image
