@@ -141,11 +141,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			}
 		}
 
-		/// <summary>
-		/// Occurs when the Loaded document protected by password. Application should return the password
-		/// </summary>
-		/// <returns></returns>
-		protected virtual string OnPasswordRequired()
+        /// <summary>
+        /// Occurs when the Loaded document protected by password. Application should return the password
+        /// </summary>
+        /// <returns>Password to the document must be returned.</returns>
+        protected virtual string OnPasswordRequired()
 		{
 			var args = new EventArgs<string>(null);
 			if (PasswordRequired != null)
@@ -186,6 +186,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		/// <summary>
 		/// Occurs after an instance of PdfPrintDocument class is created and before printing is started.
 		/// </summary>
+        /// <param name="e">Event arguments</param>
 		protected virtual void OnPdfPrinDocumentCreaded(EventArgs<PdfPrintDocument> e)
 		{
 			if (PdfPrintDocumentCreated != null)

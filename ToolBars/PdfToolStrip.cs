@@ -79,7 +79,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 		/// <param name="image">The image to display on the ToolStripButton.</param>
 		/// <param name="onClick">An event handler that raises the Click event.</param>
 		/// <param name="displayStyle">Specify whether text and images are displayed on a ToolStripItem.</param>
-		/// <returns></returns>
+		/// <returns>Tool strip item</returns>
 		protected virtual ToolStripItem CreateButton(string name, string text, string toolTipText, Image image, EventHandler onClick, ToolStripItemDisplayStyle displayStyle = ToolStripItemDisplayStyle.ImageAndText)
 		{
 			ToolStripButton btn = new ToolStripButton(text, image, onClick, name);
