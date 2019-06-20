@@ -2001,7 +2001,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     int idx = DeviceToPage(e.X, e.Y, out page_point);
                     if (idx >= 0)
                     {
-                        Document.Pages[idx].OnLButtonDown(0, page_point.X, page_point.Y);
+                        if(MouseMode!= MouseModes.PanTool && MouseMode!= MouseModes.None)
+                            Document.Pages[idx].OnLButtonDown(0, page_point.X, page_point.Y);
                         SetCurrentPage(idx);
 
                         _mousePressed = true;
@@ -2083,7 +2084,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 int idx = DeviceToPage(e.X, e.Y, out page_point);
                 if (idx >= 0)
                 {
-                    Document.Pages[idx].OnLButtonUp(0, page_point.X, page_point.Y);
+                    if (MouseMode != MouseModes.PanTool && MouseMode != MouseModes.None)
+                        Document.Pages[idx].OnLButtonUp(0, page_point.X, page_point.Y);
 
                     switch (MouseMode)
                     {
@@ -2391,6 +2393,26 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
             for (int sep = 0; sep < separator.Count; sep += 2)
                 graphics.DrawLine(_pageSeparatorColorPen, separator[sep], separator[sep + 1]);
+        }
+        #endregion
+
+        #region Other protected methods
+        /// <summary>
+        /// Sets the cursor that is displayed when the mouse pointer is over the control.
+        /// </summary>
+        /// <param name="cursor">A <see cref="CursorTypes"/> that represents the cursor to display when the mouse pointer is over the control.</param>
+        /// <remarks>You can override this method to change the logic of cursor setting in the control.</remarks>
+        protected virtual void InternalSetCursor(CursorTypes cursor)
+        {
+            switch (cursor)
+            {
+                case CursorTypes.Hand: Cursor = Cursors.Hand; break;
+                case CursorTypes.HBeam: Cursor = Cursors.IBeam; break;
+                case CursorTypes.VBeam: Cursor = Cursors.IBeam; break;
+                case CursorTypes.NESW: Cursor = Cursors.SizeNESW; break;
+                case CursorTypes.NWSE: Cursor = Cursors.SizeNWSE; break;
+                default: Cursor = DefaultCursor; break;
+            }
         }
         #endregion
 
@@ -3257,19 +3279,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             }
             return idx;
         }
-
-        private void InternalSetCursor(CursorTypes cursor)
-        {
-            switch (cursor)
-            {
-                case CursorTypes.Hand: Cursor = Cursors.Hand; break;
-                case CursorTypes.HBeam: Cursor = Cursors.IBeam; break;
-                case CursorTypes.VBeam: Cursor = Cursors.IBeam; break;
-                case CursorTypes.NESW: Cursor = Cursors.SizeNESW; break;
-                case CursorTypes.NWSE: Cursor = Cursors.SizeNWSE; break;
-                default: Cursor = DefaultCursor; break;
-            }
-        }
         #endregion
 
         #region FillForms event handlers
@@ -3496,6 +3505,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             if (!Document.Pages[page_index].OnMouseMove(0, page_point.X, page_point.Y))
                 if (character_index >= 0)
                     return CursorTypes.VBeam;
+            var formFieldType = Document.Pages[page_index].GetFormFieldAtPoint(page_point.X, page_point.Y);
+            switch (formFieldType)
+            {
+                case FormFieldTypes.FPDF_FORMFIELD_CHECKBOX:
+                case FormFieldTypes.FPDF_FORMFIELD_COMBOBOX:
+                case FormFieldTypes.FPDF_FORMFIELD_PUSHBUTTON:
+                case FormFieldTypes.FPDF_FORMFIELD_RADIOBUTTON:
+                case FormFieldTypes.FPDF_FORMFIELD_LISTBOX: return CursorTypes.Hand;
+                case FormFieldTypes.FPDF_FORMFIELD_TEXTFIELD: return CursorTypes.VBeam;
+            }
             return CursorTypes.Arrow;
         }
         #endregion
