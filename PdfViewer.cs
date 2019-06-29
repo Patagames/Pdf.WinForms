@@ -112,7 +112,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
         private PointF _scrollPoint;
         private bool _scrollPointSaved;
-        private bool _smoothSelection;
+
+        private enum SmoothSelection { None, ByCharacter, ByLine }
+        private SmoothSelection _smoothSelection;
         #endregion
 
         #region Events
@@ -1560,6 +1562,70 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             return rect;
         }
 
+        /// <summary>
+        /// Get a collection of rectangles that represent the selected text on a specified page.
+        /// </summary>
+        /// <param name="pageIndex">Zero-based index of a page.</param>
+        /// <returns>A collection of rectangles or an empty collection if the page does not contain selected text.</returns>
+        /// <remarks>The rectangles are given in the user control coordinate system.</remarks>
+        public List<Rectangle> GetSelectedRects(int pageIndex)
+        {
+            return GetSelectedRects(pageIndex, SelectInfo);
+        }
+
+        /// <summary>
+        /// Get a collection of rectangles that represent the selected text on a specific page and in accordance with the specified <see cref="SelectInfo"/> structure.
+        /// </summary>
+        /// <param name="pageIndex">Zero-based index of a page.</param>
+        /// <param name="selInfo">A<see cref="SelectInfo"/> structure that represent the selected text.</param>
+        /// <returns>A collection of rectangles or an empty collection if the page does not contain selected text.</returns>
+        /// <remarks>The rectangles are given in the user control coordinate system.</remarks>
+        public List<Rectangle> GetSelectedRects(int pageIndex, SelectInfo selInfo)
+        {
+            if (pageIndex >= selInfo.StartPage && pageIndex <= selInfo.EndPage)
+            {
+                int cnt = Document.Pages[pageIndex].Text.CountChars;
+                int s = 0;
+                if (pageIndex == selInfo.StartPage)
+                    s = selInfo.StartIndex;
+
+                int len = cnt;
+                if (pageIndex == selInfo.EndPage)
+                    len = (selInfo.EndIndex + 1) - s;
+
+                int s2 = s + len;
+                int len2 = cnt - s2;
+
+                var ti = GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, s, len);
+                var tiBefore = _smoothSelection == SmoothSelection.ByLine && s > 0 ? GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, 0, s) : null;
+                var tiAfter = _smoothSelection == SmoothSelection.ByLine && s2 < cnt && len2 > 0 ? GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, s2, len2) : null;
+                return NormalizeRects(ti, pageIndex, tiBefore, tiAfter);
+            }
+            else
+                return new List<Rectangle>();
+        }
+
+        /// <summary>
+        /// Get a collection of rectangles that represent the highlighted text on a specific page and in accordance with the specified <see cref="HighlightInfo"/> structure.
+        /// </summary>
+        /// <param name="pageIndex">Zero-based index of a page.</param>
+        /// <param name="selInfo">A <see cref="HighlightInfo"/> structure that represent the highlighted text.</param>
+        /// <returns>A collection of rectangles or an empty collection if the page does not contain highlighted text.</returns>
+        /// <remarks>The rectangles are given in the user control coordinate system.</remarks>
+        public List<Rectangle> GetHighlightedRects(int pageIndex, HighlightInfo selInfo)
+        {
+            int cnt = Document.Pages[pageIndex].Text.CountChars;
+            int s = selInfo.CharIndex;
+            int len = selInfo.CharsCount;
+
+            int s2 = s + len;
+            int len2 = cnt - s2;
+
+            var ti = GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, s, len);
+            var tiBefore = _smoothSelection == SmoothSelection.ByLine && s > 0 ? GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, 0, s) : null;
+            var tiAfter = _smoothSelection == SmoothSelection.ByLine && s2 < cnt && len2 > 0 ? GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, s2, len2) : null;
+            return NormalizeRects(ti, pageIndex, tiBefore, tiAfter);
+        }
         #endregion
 
         #region Load and Close document
@@ -1729,7 +1795,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             DoubleBuffered = true;
             FormsBlendMode = BlendTypes.FXDIB_BLEND_MULTIPLY;
             OptimizedLoadThreshold = 1000;
-            _smoothSelection = true;
+            _smoothSelection = SmoothSelection.ByLine;
             _prPages.PaintBackground += (s, e) => DrawPageBackColor(_prPages.CanvasBitmap, e.Value.X, e.Value.Y, e.Value.Width, e.Value.Height);
 
             InitializeComponent();
@@ -2232,8 +2298,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
             foreach (var e in entries)
             {
-                var textInfo = Document.Pages[pageIndex].Text.GetTextInfo(e.CharIndex, e.CharsCount);
-                var rects = NormalizeRects(textInfo.Rects, pageIndex);
+                var rects = GetHighlightedRects(pageIndex, e);
                 foreach (var r in rects)
                     bitmap.FillRectEx(r.Left, r.Top, r.Width, r.Height, e.Color.ToArgb(), FormsBlendMode);
             }
@@ -2254,16 +2319,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 return;
             if (pageIndex >= selInfo.StartPage && pageIndex <= selInfo.EndPage)
             {
-                int s = 0;
-                if (pageIndex == selInfo.StartPage)
-                    s = selInfo.StartIndex;
-
-                int len = Document.Pages[pageIndex].Text.CountChars;
-                if (pageIndex == selInfo.EndPage)
-                    len = (selInfo.EndIndex + 1) - s;
-
-                var ti = Document.Pages[pageIndex].Text.GetTextInfo(s, len);
-                var rects = NormalizeRects(ti.Rects, pageIndex);
+                var rects = GetSelectedRects(pageIndex, selInfo);
                 foreach (var r in rects)
                     bitmap.FillRectEx(r.X, r.Y, r.Width, r.Height, TextSelectColor.ToArgb(), FormsBlendMode);
             }
@@ -2838,11 +2894,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             return selTmp;
         }
 
-        private List<Rectangle> NormalizeRects(IEnumerable<FS_RECTF> rects, int pageIndex)
+        private List<Rectangle> NormalizeRects(IEnumerable<FS_RECTF> rects, int pageIndex, IEnumerable<FS_RECTF> rectsBefore, IEnumerable<FS_RECTF> rectsAfter)
         {
             List<Rectangle> rows = new List<Rectangle>();
 
-            if (!_smoothSelection)
+            if (_smoothSelection == SmoothSelection.None)
             {
                 foreach (var rc in rects)
                     rows.Add(PageToDeviceRect(rc, pageIndex));
@@ -2857,13 +2913,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
             foreach (var rc in rects)
             {
+                float h = (highestTop - lowestBottom);
                 //check if new row is required
                 if (float.IsNaN(lowestBottom))
                 {
                     lowestBottom = rc.bottom;
                     highestTop = rc.top;
                 }
-                else if (rc.top < lowestBottom || rc.bottom > highestTop)
+                else if (rc.top < lowestBottom + h / 2 || rc.bottom > highestTop - h / 2)
                 {
                     rows.Add(new Rectangle(left, top, right - left, bottom - top));
                     lowestBottom = rc.bottom;
@@ -2893,7 +2950,31 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     bottom = deviceRect.Y + deviceRect.Height;
             }
             rows.Add(new Rectangle(left, top, right - left, bottom - top));
+
+            if (_smoothSelection == SmoothSelection.ByLine && rectsBefore != null)
+                PadRectagles(pageIndex, rectsBefore, rows, true);
+
+            if (_smoothSelection == SmoothSelection.ByLine && rectsAfter != null)
+                PadRectagles(pageIndex, rectsAfter, rows, false);
+
             return rows;
+        }
+
+        private void PadRectagles(int pageIndex, IEnumerable<FS_RECTF> padRects, List<Rectangle> rows, bool isLeft)
+        {
+            var rTmp = NormalizeRects(padRects, pageIndex, null, null);
+            if (rTmp.Count > 0)
+            {
+                var rc = rTmp[isLeft ? rTmp.Count - 1 : 0];
+                if (!(rc.Y + rc.Height < rows[isLeft ? 0 : rows.Count - 1].Y || rc.Y > rows[isLeft ? 0 : rows.Count - 1].Y + rows[isLeft ? 0 : rows.Count - 1].Height))
+                {
+                    var l = rows[isLeft ? 0 : rows.Count - 1].X;
+                    var r = rows[isLeft ? 0 : rows.Count - 1].X + rows[isLeft ? 0 : rows.Count - 1].Width;
+                    var t = Math.Min(rc.Y, rows[isLeft ? 0 : rows.Count - 1].Y);
+                    var b = Math.Max(rc.Y + rc.Height, rows[isLeft ? 0 : rows.Count - 1].Y + rows[isLeft ? 0 : rows.Count - 1].Height);
+                    rows[isLeft ? 0 : rows.Count - 1] = new Rectangle(l, t, r - l, b - t);
+                }
+            }
         }
 
         private SizeF CalcVertical()
@@ -3278,6 +3359,41 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     idx = i;
             }
             return idx;
+        }
+
+        private IEnumerable<FS_RECTF> GetRectsFromTextInfoWithoutSpaceCharacter(int pageIndex, int s, int len)
+        {
+            var tmpRet = new List<IEnumerable<FS_RECTF>>();
+            int curStart = -1;
+            int curLen = 0;
+            for (int i = s; i < s + len; i++)
+            {
+                if (Document.Pages[pageIndex].Text.GetCharacter(i) == ' ')
+                {
+                    if (curStart >= 0)
+                    {
+                        tmpRet.Add(Document.Pages[pageIndex].Text.GetTextInfo(curStart, curLen).Rects);
+                        curStart = -1;
+                        curLen = 0;
+                    }
+                    continue;
+                }
+                if (curStart == -1)
+                {
+                    curStart = i;
+                    curLen = 1;
+                }
+                else
+                    curLen++;
+            }
+            if (curStart >= 0)
+                tmpRet.Add(Document.Pages[pageIndex].Text.GetTextInfo(curStart, curLen).Rects);
+
+            var ret = new List<FS_RECTF>();
+            foreach (var t in tmpRet)
+                ret.AddRange(t);
+
+            return ret;
         }
         #endregion
 
