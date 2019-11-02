@@ -1417,13 +1417,31 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// <param name="color">Highlight color</param>
         public void HighlightText(int pageIndex, int charIndex, int charsCount, Color color)
         {
+            HighlightText(pageIndex, charIndex, charsCount, color, new FS_RECTF());
+        }
+
+        /// <summary>
+        /// Highlight text on the page
+        /// </summary>
+        /// <param name="pageIndex">Zero-based index of the page</param>
+        /// <param name="charIndex">Zero-based char index on the page.</param>
+        /// <param name="charsCount">The number of highlighted characters on the page or -1 for highlight text from charIndex to end of the page.</param>
+        /// <param name="color">Highlight color</param>
+        /// <param name="inflate">A delta values for each edge of the rectangles of the highlighted text.</param>
+        public void HighlightText(int pageIndex, int charIndex, int charsCount, Color color, FS_RECTF inflate)
+        {
             //normalize all user input
             if (pageIndex < 0)
                 pageIndex = 0;
             if (pageIndex > Document.Pages.Count - 1)
                 pageIndex = Document.Pages.Count - 1;
 
-            int charsCnt = Document.Pages[pageIndex].Text.CountChars;
+            IntPtr ph = Pdfium.FPDF_LoadPage(Document.Handle, pageIndex);
+            IntPtr th = Pdfium.FPDFText_LoadPage(ph);
+            int charsCnt = Pdfium.FPDFText_CountChars(th);
+            Pdfium.FPDFText_ClosePage(th);
+            Pdfium.FPDF_ClosePage(ph);
+
             if (charIndex < 0)
                 charIndex = 0;
             if (charIndex > charsCnt - 1)
@@ -1435,7 +1453,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             if (charsCount <= 0)
                 return;
 
-            var newEntry = new HighlightInfo() { CharIndex = charIndex, CharsCount = charsCount, Color = color };
+            var newEntry = new HighlightInfo() { CharIndex = charIndex, CharsCount = charsCount, Color = color, Inflate = inflate };
 
             if (!_highlightedText.ContainsKey(pageIndex))
             {
@@ -1496,7 +1514,17 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// Highlight selected text on the page by specified color
         /// </summary>
         /// <param name="color">Highlight color</param>
+        [Obsolete("This method is obsolete. Please use HighlightSelectedText instead", false)]
         public void HilightSelectedText(Color color)
+        {
+            HighlightSelectedText(color);
+        }
+
+        /// <summary>
+        /// Highlight selected text on the page by specified color
+        /// </summary>
+        /// <param name="color">Highlight color</param>
+        public void HighlightSelectedText(Color color)
         {
             var selInfo = SelectInfo;
             if (selInfo.StartPage < 0 || selInfo.StartIndex < 0)
@@ -1513,9 +1541,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// <summary>
         /// Removes highlight from selected text
         /// </summary>
+        [Obsolete("This method is obsolete. Please use RemoveHighlightFromSelectedText instead", false)]
         public void RemoveHilightFromSelectedText()
         {
-            HilightSelectedText(Color.Empty);
+            RemoveHighlightFromSelectedText();
+        }
+
+        /// <summary>
+        /// Removes highlight from selected text
+        /// </summary>
+        public void RemoveHighlightFromSelectedText()
+        {
+            HighlightSelectedText(Color.Empty);
         }
 
         /// <summary>
@@ -1622,9 +1659,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             int len2 = cnt - s2;
 
             var ti = GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, s, len);
-            var tiBefore = _smoothSelection == SmoothSelection.ByLine && s > 0 ? GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, 0, s) : null;
-            var tiAfter = _smoothSelection == SmoothSelection.ByLine && s2 < cnt && len2 > 0 ? GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, s2, len2) : null;
-            return NormalizeRects(ti, pageIndex, tiBefore, tiAfter);
+            if (selInfo.Inflate == default(FS_RECTF))
+            {
+                var tiBefore = _smoothSelection == SmoothSelection.ByLine && s > 0 ? GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, 0, s) : null;
+                var tiAfter = _smoothSelection == SmoothSelection.ByLine && s2 < cnt && len2 > 0 ? GetRectsFromTextInfoWithoutSpaceCharacter(pageIndex, s2, len2) : null;
+                return NormalizeRects(ti, pageIndex, tiBefore, tiAfter, selInfo.Inflate);
+            }
+            else
+                return NormalizeRects(ti, pageIndex, null, null, selInfo.Inflate);
         }
         #endregion
 
@@ -2896,6 +2938,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
         private List<Rectangle> NormalizeRects(IEnumerable<FS_RECTF> rects, int pageIndex, IEnumerable<FS_RECTF> rectsBefore, IEnumerable<FS_RECTF> rectsAfter)
         {
+            return NormalizeRects(rects, pageIndex, rectsBefore, rectsAfter, new FS_RECTF());
+        }
+
+        private List<Rectangle> NormalizeRects(IEnumerable<FS_RECTF> rects, int pageIndex, IEnumerable<FS_RECTF> rectsBefore, IEnumerable<FS_RECTF> rectsAfter, FS_RECTF inflate)
+        {
             List<Rectangle> rows = new List<Rectangle>();
 
             if (_smoothSelection == SmoothSelection.None)
@@ -2913,6 +2960,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
             foreach (var rc in rects)
             {
+                rc.Inflate(inflate);
+
                 float h = (highestTop - lowestBottom);
                 //check if new row is required
                 if (float.IsNaN(lowestBottom))
@@ -2984,12 +3033,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             for (int i = 0; i < _renderRects.Length; i++)
             {
                 bool isChecked = GetRenderRectEx(ref rrect, i);
-                again: _renderRects[i] = new RenderRect(
-                    rrect.X,
-                    i > 0 ? _renderRects[i - 1].Bottom + PageMargin.Vertical : Padding.Top,
-                    rrect.Width,
-                    rrect.Height,
-                    isChecked);
+            again: _renderRects[i] = new RenderRect(
+                rrect.X,
+                i > 0 ? _renderRects[i - 1].Bottom + PageMargin.Vertical : Padding.Top,
+                rrect.Width,
+                rrect.Height,
+                isChecked);
                 if (!isChecked && CalcActualRect(i).IntersectsWith(ClientRectangle))
                 {
                     isChecked = true;
@@ -3015,12 +3064,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 for (j = i; j < i + TilesCount && j < _renderRects.Length; j++)
                 {
                     bool isChecked = GetRenderRectEx(ref rrect, j);
-                    again: _renderRects[j] = new RenderRect(
-                        (j - i) % TilesCount != 0 ? _renderRects[j - 1].Right + PageMargin.Horizontal : Padding.Left,
-                        i > 0 ? height + PageMargin.Vertical : Padding.Top,
-                        rrect.Width,
-                        rrect.Height,
-                        isChecked);
+                again: _renderRects[j] = new RenderRect(
+                    (j - i) % TilesCount != 0 ? _renderRects[j - 1].Right + PageMargin.Horizontal : Padding.Left,
+                    i > 0 ? height + PageMargin.Vertical : Padding.Top,
+                    rrect.Width,
+                    rrect.Height,
+                    isChecked);
                     if (!isChecked && CalcActualRect(j).IntersectsWith(ClientRectangle))
                     {
                         isChecked = true;
@@ -3052,12 +3101,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 for (j = i; j < i + TilesCount && j < _renderRects.Length; j++)
                 {
                     bool isChecked = GetRenderRectEx(ref rrect, j);
-                    again: _renderRects[j] = new RenderRect(
-                        i > 0 ? width + PageMargin.Horizontal : Padding.Left,
-                        (j - i) % TilesCount != 0 ? _renderRects[j - 1].Bottom + PageMargin.Vertical : Padding.Top,
-                        rrect.Width,
-                        rrect.Height,
-                        isChecked);
+                again: _renderRects[j] = new RenderRect(
+                    i > 0 ? width + PageMargin.Horizontal : Padding.Left,
+                    (j - i) % TilesCount != 0 ? _renderRects[j - 1].Bottom + PageMargin.Vertical : Padding.Top,
+                    rrect.Width,
+                    rrect.Height,
+                    isChecked);
                     if (!isChecked && CalcActualRect(j).IntersectsWith(ClientRectangle))
                     {
                         isChecked = true;
@@ -3084,12 +3133,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             for (int i = 0; i < _renderRects.Length; i++)
             {
                 bool isChecked = GetRenderRectEx(ref rrect, i);
-                again: _renderRects[i] = new RenderRect(
-                    i > 0 ? _renderRects[i - 1].Right + PageMargin.Horizontal : Padding.Left,
-                    rrect.Y,
-                    rrect.Width,
-                    rrect.Height,
-                    isChecked);
+            again: _renderRects[i] = new RenderRect(
+                i > 0 ? _renderRects[i - 1].Right + PageMargin.Horizontal : Padding.Left,
+                rrect.Y,
+                rrect.Width,
+                rrect.Height,
+                isChecked);
                 if (!isChecked && CalcActualRect(i).IntersectsWith(ClientRectangle))
                 {
                     isChecked = true;

@@ -6,8 +6,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 	/// </summary>
 	public struct HighlightInfo
 	{
-		private Color _color;
-
 		/// <summary>
 		/// The starting character index of the highlighted text.
 		/// </summary>
@@ -18,17 +16,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		public int CharsCount;
 
-		/// <summary>
-		/// Text highlighted color
-		/// </summary>
-		public Color Color
-		{
-			get { return _color; }
-			set
-			{
-				if (_color != value)
-					_color = value;
-			}
-		}
-	}
+        /// <summary>
+        /// Text highlighted color
+        /// </summary>
+        public Color Color;
+
+        /// <summary>
+        /// Gets or sets delta values for each edge of the rectangles of the highlighted text.
+        /// </summary>
+        public FS_RECTF Inflate { get; set; }
+    }
 }

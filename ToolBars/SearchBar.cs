@@ -244,10 +244,26 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			_onsearchTimer.Stop();
 			OnSearch();
 		}
-		#endregion
 
-		#region Event handlers
-		private void pnlHostTextBox_Click(object sender, EventArgs e)
+        private void TbSearch_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter && e.Control)
+            {
+                ProcessUpClick();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Enter)
+            {
+                ProcessDownClick();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        }
+        #endregion
+
+        #region Event handlers
+        private void pnlHostTextBox_Click(object sender, EventArgs e)
 		{
 			tbSearch.Focus();
 		}
@@ -274,6 +290,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			if (NeedSearch != null)
 				NeedSearch(this, EventArgs.Empty);
         }
-		#endregion
-	}
+
+        #endregion
+    }
 }
