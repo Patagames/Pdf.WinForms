@@ -2788,7 +2788,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             }
 
             if (SizeMode != SizeModes.Zoom)
-                _zoom = (float)(w / ret.Width);
+                _zoom = (float)(ret.Width / w);
             return ret;
         }
 

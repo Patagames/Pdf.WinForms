@@ -106,7 +106,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <returns>Null if page still painting, PdfBitmap object if page successfully rendered.</returns>
 		private bool ProcessExisting(PdfBitmap bitmap, PdfPage page, Rectangle pageRect, PageRotate pageRotate, RenderFlags renderFlags)
 		{
-			switch (this[page].status)
+#if PDF_ENABLE_XFA
+            if (page.Document.FormFill != null && page.Document.FormFill.DocumentType == DocumentTypes.DynamicXfa)
+                this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
+#endif
+                switch (this[page].status)
 			{
 				case ProgressiveRenderingStatuses.RenderReader:
                     this[page].status = page.StartProgressiveRender(bitmap, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, pageRotate, renderFlags, null);
