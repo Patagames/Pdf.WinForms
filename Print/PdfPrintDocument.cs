@@ -208,6 +208,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 				double width, height;
 				double x, y;
+				
+				var rot = Pdfium.FPDFPage_GetRotation(currentPage);
+				if (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90)
+					Pdfium.FPDFPage_SetRotation(currentPage, PageRotate.Normal);
+
 				CalcSize(currentPage, dpiX, dpiY, e.PageSettings.PrintableArea, e.PageSettings.Landscape, out width, out height, out x, out y);
 				PageRotate rotation = CalcRotation(currentPage, e.PageSettings.Landscape, ref width, ref height, ref x, ref y);
 
@@ -227,6 +232,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					(int)(height),
 					rotation,
 					RenderFlags);
+
+				if(rot!= PageRotate.Normal)
+					Pdfium.FPDFPage_SetRotation(currentPage, rot);
 
 				//Print next page
 				if (_pageForPrint < PrinterSettings.ToPage - (_useDP ? PrinterSettings.FromPage : 1))
@@ -293,8 +301,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				(float)height
 				);
 
-			var rot = Pdfium.FPDFPage_GetRotation(currentPage);
-			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90) || (width > height);
+			bool isRotated = (width > height);
 
 			if (AutoRotate && isRotated)
 				fitSize = new SizeF(fitSize.Height, fitSize.Width);
