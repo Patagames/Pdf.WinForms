@@ -48,8 +48,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			get
 			{
 				foreach (var item in this)
-					if (item.Value.status == ProgressiveRenderingStatuses.RenderTobeContinued
-						|| item.Value.status == ProgressiveRenderingStatuses.RenderReader)
+					if (item.Value.status == ProgressiveStatus.ToBeContinued
+						|| item.Value.status == ProgressiveStatus.Ready)
 						return true;
 				return false;
 			}
@@ -89,9 +89,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             }
 
 			if ((renderFlags & (RenderFlags.FPDF_THUMBNAIL | RenderFlags.FPDF_HQTHUMBNAIL)) != 0)
-				this[page].status = ProgressiveRenderingStatuses.RenderDone + 4;
+				this[page].status = ProgressiveStatus.Done + 4;
 			else if (!useProgressiveRender)
-				this[page].status = ProgressiveRenderingStatuses.RenderDone + 3;
+				this[page].status = ProgressiveStatus.Done + 3;
 
             PdfBitmap bitmap = this[page].Bitmap;
             bool ret = ProcessExisting(bitmap ?? CanvasBitmap, page, pageRect, pageRotate, renderFlags);
@@ -112,40 +112,40 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 #endif
                 switch (this[page].status)
 			{
-				case ProgressiveRenderingStatuses.RenderReader:
+				case ProgressiveStatus.Ready:
                     this[page].status = page.StartProgressiveRender(bitmap, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, pageRotate, renderFlags, null);
-					if (this[page].status == ProgressiveRenderingStatuses.RenderDone)
+					if (this[page].status == ProgressiveStatus.Done)
 						return true;
 					return false; //Start rendering. Return nothing.
 
-				case ProgressiveRenderingStatuses.RenderDone:
+				case ProgressiveStatus.Done:
 					page.CancelProgressiveRender();
-					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
+					this[page].status = ProgressiveStatus.Done + 2;
 					return true; //Stop rendering. Return image.
 
-				case ProgressiveRenderingStatuses.RenderDone + 2:
+				case ProgressiveStatus.Done + 2:
 					return true; //Rendering already stoped. return image
 
-				case ProgressiveRenderingStatuses.RenderDone + 3:
-					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
+				case ProgressiveStatus.Done + 3:
+					this[page].status = ProgressiveStatus.Done + 2;
                     page.RenderEx(bitmap, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, pageRotate, renderFlags);
 					return true; //Rendering in non progressive mode
 
-				case ProgressiveRenderingStatuses.RenderDone + 4:
-					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
+				case ProgressiveStatus.Done + 4:
+					this[page].status = ProgressiveStatus.Done + 2;
 					DrawThumbnail(bitmap, page, pageRect, pageRotate, renderFlags);
 					return true; //Rendering thumbnails
 
-				case ProgressiveRenderingStatuses.RenderTobeContinued:
+				case ProgressiveStatus.ToBeContinued:
 					this[page].status = page.ContinueProgressiveRender();
 					return false; //Continue rendering. Return nothing.
 
-				case ProgressiveRenderingStatuses.RenderFailed:
+				case ProgressiveStatus.Failed:
 				default:
                     bitmap.FillRectEx(pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, Color.Red.ToArgb());
                     bitmap.FillRectEx(pageRect.X + 5, pageRect.Y + 5, pageRect.Width - 10, pageRect.Height - 10, Color.White.ToArgb());
 					page.CancelProgressiveRender();
-					this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
+					this[page].status = ProgressiveStatus.Done + 2;
 					return true; //An error has occurred. Stop rendering. return special image
             }
 		}
@@ -171,7 +171,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		private void ProcessNew(PdfPage page)
 		{
-            var item = new PRItem(ProgressiveRenderingStatuses.RenderReader, page.IsTransparency ? CanvasSize : new Size(0,0));
+            var item = new PRItem(ProgressiveStatus.Ready, page.IsTransparency ? CanvasSize : new Size(0,0));
 			this.Add(page, item);
 			page.Disposed += Page_Disposed;
 		}
@@ -193,7 +193,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// </summary>
 		private void ReleasePage(PdfPage page)
 		{
-			if (this[page].status == ProgressiveRenderingStatuses.RenderTobeContinued)
+			if (this[page].status == ProgressiveStatus.ToBeContinued)
 				page.CancelProgressiveRender();
             this[page].Dispose();
 			page.Disposed -= Page_Disposed;

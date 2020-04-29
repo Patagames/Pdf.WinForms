@@ -6,10 +6,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 {
 	internal class PRItem : IDisposable
 	{
-		public ProgressiveRenderingStatuses status;
+		public ProgressiveStatus status;
         public PdfBitmap Bitmap;
 
-        public PRItem(ProgressiveRenderingStatuses status, Size canvasSize)
+        public PRItem(ProgressiveStatus status, Size canvasSize)
         {
             this.status = status;
             if(canvasSize.Width>0 && canvasSize.Height>0)

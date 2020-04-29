@@ -3527,8 +3527,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             var idx = Document.Pages.GetPageIndex(e.Page);
             var pt1 = PageToDevice(e.Rect.left, e.Rect.top, idx);
             var pt2 = PageToDevice(e.Rect.right, e.Rect.bottom, idx);
-            _selectedRectangles.Add(new Rectangle(pt1.X, pt1.Y, pt2.X - pt1.X, pt2.Y - pt1.Y));
-            Invalidate();
+            int w = pt2.X - pt1.X;
+            int h = pt2.Y - pt1.Y;
+            int x = pt1.X + (w < 0 ? w : 0);
+            int y = pt1.Y + (h < 0 ? h : 0);
+            _selectedRectangles.Add(new Rectangle(x, y, w < 0 ? -w : w, h < 0 ? -h : h));
         }
 
         /// <summary>
