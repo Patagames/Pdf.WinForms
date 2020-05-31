@@ -2687,6 +2687,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                         separator.Add(new Point(actualRect.Right, actualRect.Bottom + PageMargin.Bottom));
                     }
                     break;
+                case ViewModes.TilesHorizontal:
+                    if (pageIndex <= _endPage - TilesCount)
+                    {
+                        //vertical
+                        separator.Add(new Point(actualRect.Right + PageMargin.Right, actualRect.Top));
+                        separator.Add(new Point(actualRect.Right + PageMargin.Right, actualRect.Bottom));
+                    }
+                    if ((pageIndex + 1) % TilesCount != 0)
+                    {
+                        //horizontal
+                        separator.Add(new Point(actualRect.X, actualRect.Bottom + PageMargin.Bottom));
+                        separator.Add(new Point(actualRect.Right, actualRect.Bottom + PageMargin.Bottom));
+                    }
+                    break;
             }
         }
 
