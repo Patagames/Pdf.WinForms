@@ -2061,8 +2061,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     if (idx < 0 || idx >= cnt)
                         continue;
                     var annot = annots[idx];
-                    if (annot is PdfMarkupAnnotation)
-                        (annot as PdfMarkupAnnotation).RegenerateAppearances();
+                    try
+                    {
+                        if (annot is PdfMarkupAnnotation)
+                            (annot as PdfMarkupAnnotation).RegenerateAppearances();
+                    }
+                    catch (UnexpectedTypeException)
+                    {
+                        continue;
+                    }
                 }
             }
         }

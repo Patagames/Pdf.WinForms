@@ -25,6 +25,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// Occurs after the page of the document is loaded and before prints.
 		/// </summary>
 		public event EventHandler<BeforeRenderPageEventArgs> BeforeRenderPage;
+
+		/// <summary>
+		/// Occurs after rendering a document page.
+		/// </summary>
+		public event EventHandler<BeforeRenderPageEventArgs> AfterRenderPage;
 		#endregion
 
 		#region Public properties
@@ -118,24 +123,50 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <summary>
 		/// Raises the BeforeRenderPage event.
 		/// </summary>
+		/// <param name="g">Drawing surface.</param>
 		/// <param name="page">The pagewhat will be printed.</param>
+		/// <param name="x">Horizontal position of the <paramref name="page"/> on the drawing surface.</param>
+		/// <param name="y">Vertical position of the <paramref name="page"/> on the drawing surface.</param>
 		/// <param name="width">The page's width calculated to match the sheet size.</param>
 		/// <param name="height">The page's height calculated to match the sheet size.</param>
 		/// <param name="rotation">The page rotation.</param>
-		protected virtual void OnBeforeRenderPage(PdfPage page, double width, double height, PageRotate rotation)
+		protected virtual void OnBeforeRenderPage(Graphics g, PdfPage page, ref int x, ref int y, ref int width, ref int height, PageRotate rotation)
 		{
 			if (BeforeRenderPage != null)
-				BeforeRenderPage(this, new BeforeRenderPageEventArgs(page, width, height, rotation));
+			{
+				var args = new BeforeRenderPageEventArgs(g, page, x, y, width, height, rotation);
+				BeforeRenderPage(this, args);
+				x = args.X;
+				y = args.Y;
+				width = args.Width;
+				height = args.Height;
+			}
 		}
 
-        /// <summary>
-        /// Raises the System.Drawing.Printing.PrintDocument.BeginPrint event. It is called
-        /// after the System.Drawing.Printing.PrintDocument.Print method is called and before
-        /// the first page of the document prints.
-        /// </summary>
-        /// <param name="e">A System.Drawing.Printing.PrintEventArgs that contains the event data.</param>
-        /// <seealso href="https://pdfium.patagames.com/c-pdf-library/">C# Print PDF</seealso>
-        protected override void OnBeginPrint(PrintEventArgs e)
+		/// <summary>
+		/// Raises the AfterRenderPage event.
+		/// </summary>
+		/// <param name="g">Drawing surface.</param>
+		/// <param name="page">The pagewhat will be printed.</param>
+		/// <param name="x">Horizontal position of the <paramref name="page"/> on the drawing surface.</param>
+		/// <param name="y">Vertical position of the <paramref name="page"/> on the drawing surface.</param>
+		/// <param name="width">The page's width calculated to match the sheet size.</param>
+		/// <param name="height">The page's height calculated to match the sheet size.</param>
+		/// <param name="rotation">The page rotation.</param>
+		protected virtual void OnAfterRenderPage(Graphics g, PdfPage page, int x, int y, int width, int height, PageRotate rotation)
+		{
+			if (AfterRenderPage != null)
+				AfterRenderPage(this, new BeforeRenderPageEventArgs(g, page, x, y, width, height, rotation));
+		}
+
+		/// <summary>
+		/// Raises the System.Drawing.Printing.PrintDocument.BeginPrint event. It is called
+		/// after the System.Drawing.Printing.PrintDocument.Print method is called and before
+		/// the first page of the document prints.
+		/// </summary>
+		/// <param name="e">A System.Drawing.Printing.PrintEventArgs that contains the event data.</param>
+		/// <seealso href="https://pdfium.patagames.com/c-pdf-library/">C# Print PDF</seealso>
+		protected override void OnBeginPrint(PrintEventArgs e)
 		{
 			base.OnBeginPrint(e);
 
@@ -179,13 +210,40 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			_printHandle = IntPtr.Zero;
 		}
 
-        /// <summary>
-        /// Raises the System.Drawing.Printing.PrintDocument.PrintPage event. It is called
-        /// before a page prints.
-        /// </summary>
-        /// <param name="e"> A System.Drawing.Printing.PrintPageEventArgs that contains the event data.</param>
-        /// <seealso href="https://pdfium.patagames.com/c-pdf-library/">C# Print PDF</seealso>
-        protected override void OnPrintPage(PrintPageEventArgs e)
+		/// <summary>
+		/// Raises the System.Drawing.Printing.PrintDocument.QueryPageSettings event. It
+		/// is called immediately before each System.Drawing.Printing.PrintDocument.PrintPage event.
+		/// </summary>
+		/// <param name="e">A System.Drawing.Printing.QueryPageSettingsEventArgs that contains the event data.</param>
+		protected override void OnQueryPageSettings(QueryPageSettingsEventArgs e)
+		{
+			if (AutoRotate)
+			{
+				IntPtr currentPage = Pdfium.FPDF_StartLoadPage(_docForPrint, _pageForPrint);
+				if (currentPage == IntPtr.Zero)
+				{
+					e.Cancel = true;
+					return;
+				}
+				double width = Pdfium.FPDF_GetPageWidth(currentPage);
+				double height = Pdfium.FPDF_GetPageHeight(currentPage);
+				var rotation = Pdfium.FPDFPage_GetRotation(currentPage);
+				bool isRotated = (/*rotation == PageRotate.Rotate270 || rotation == PageRotate.Rotate90 ||*/ width > height);
+				e.PageSettings.Landscape = isRotated;
+				if (currentPage != IntPtr.Zero)
+					Pdfium.FPDF_ClosePage(currentPage);
+			}
+
+			base.OnQueryPageSettings(e);
+		}
+
+		/// <summary>
+		/// Raises the System.Drawing.Printing.PrintDocument.PrintPage event. It is called
+		/// before a page prints.
+		/// </summary>
+		/// <param name="e"> A System.Drawing.Printing.PrintPageEventArgs that contains the event data.</param>
+		/// <seealso href="https://pdfium.patagames.com/c-pdf-library/">C# Print PDF</seealso>
+		protected override void OnPrintPage(PrintPageEventArgs e)
 		{
 			base.OnPrintPage(e);
 
@@ -206,35 +264,31 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				double dpiX = e.Graphics.DpiX;
 				double dpiY = e.Graphics.DpiY;
 
-				double width, height;
+				double width = Pdfium.FPDF_GetPageWidth(currentPage) / 72 * dpiX;
+				double height = Pdfium.FPDF_GetPageHeight(currentPage) / 72 * dpiY;
 				double x, y;
+				Rectangle clipRect;
 				
-				var rot = Pdfium.FPDFPage_GetRotation(currentPage);
-				if (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90)
-					Pdfium.FPDFPage_SetRotation(currentPage, PageRotate.Normal);
+				CalcSize(dpiX, dpiY, e.PageSettings.PrintableArea, e.MarginBounds, new PointF(e.PageSettings.HardMarginX, e.PageSettings.HardMarginY), e.PageSettings.Landscape, ref width, ref height, out x, out y, out clipRect);
 
-				CalcSize(currentPage, dpiX, dpiY, e.PageSettings.PrintableArea, e.PageSettings.Landscape, out width, out height, out x, out y);
-				PageRotate rotation = CalcRotation(currentPage, e.PageSettings.Landscape, ref width, ref height, ref x, ref y);
-
+				int ix = (int)x;
+				int iy = (int)y;
+				int iw = (int)width;
+				int ih = (int)height;
 				using (var page = PdfPage.FromHandle(_pdfDoc, currentPage, _pageForPrint))
-				{
-					OnBeforeRenderPage(page, width, height, rotation);
-				}
+					OnBeforeRenderPage(e.Graphics, page, ref ix, ref iy, ref iw, ref ih, PageRotate.Normal);
 
 				hdc = e.Graphics.GetHdc();
-				Pdfium.SetWorldTransform(hdc, new FS_MATRIX(1, 0, 0, 1, x, y));
-				Pdfium.FPDF_RenderPage(
-					hdc,
-					currentPage,
-					(int)0,
-					(int)0,
-					(int)(width),
-					(int)(height),
-					rotation,
-					RenderFlags);
+				if (OriginAtMargins)
+					Pdfium.IntersectClipRect(hdc, clipRect.Left, clipRect.Top, clipRect.Right, clipRect.Bottom);
 
-				if(rot!= PageRotate.Normal)
-					Pdfium.FPDFPage_SetRotation(currentPage, rot);
+				Pdfium.FPDF_RenderPage( hdc, currentPage, ix, iy, iw, ih, PageRotate.Normal, RenderFlags);
+
+				if (hdc != IntPtr.Zero)
+					e.Graphics.ReleaseHdc(hdc);
+				hdc = IntPtr.Zero;
+				using (var page = PdfPage.FromHandle(_pdfDoc, currentPage, _pageForPrint))
+					OnAfterRenderPage(e.Graphics, page, ix, iy, iw, ih, PageRotate.Normal);
 
 				//Print next page
 				if (_pageForPrint < PrinterSettings.ToPage - (_useDP ? PrinterSettings.FromPage : 1))
@@ -247,17 +301,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			{
 				if (hdc != IntPtr.Zero)
 					e.Graphics.ReleaseHdc(hdc);
-				hdc = IntPtr.Zero;
 				if (currentPage != IntPtr.Zero)
 					Pdfium.FPDF_ClosePage(currentPage);
-				currentPage = IntPtr.Zero;
 			}
 		}
+        #endregion
 
-		#endregion
-
-		#region Private methods
-		private IntPtr InitDocument()
+        #region Private methods
+        private IntPtr InitDocument()
 		{
 			if (!_useDP)
 				return _pdfDoc.Handle;
@@ -278,35 +329,46 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 			_docForPrint = Pdfium.FPDFPRINT_GetDocument(_printHandle);
 			if (_docForPrint == IntPtr.Zero)
-				return IntPtr.Zero;
+				return IntPtr.Zero; 
 
 			return _docForPrint;
 		}
 
-		private void CalcSize(IntPtr currentPage, double dpiX, double dpiY, RectangleF printableArea, bool isLandscape, out double width, out double height, out double x, out double y)
+		private void CalcSize(double dpiX, double dpiY, RectangleF printableArea, Rectangle marginBounds, PointF hardMargin, bool isLandscape, ref double width, ref double height, out double x, out double y, out Rectangle clipRect)
 		{
 			x = y = 0;
-			width = Pdfium.FPDF_GetPageWidth(currentPage) / 72 * dpiX;
-			height = Pdfium.FPDF_GetPageHeight(currentPage) / 72 * dpiY;
+			clipRect = Rectangle.Empty;
 			if (_useDP)
 				return;
 
+			RectangleF forPrintArea = !OriginAtMargins ?
+				new RectangleF(
+					(float)(printableArea.X),
+					(float)(printableArea.Y),
+					printableArea.Width,
+					printableArea.Height
+					) :
+				new RectangleF(
+					(float)(marginBounds.X),
+					(float)(marginBounds.Y),
+					marginBounds.Width,
+					marginBounds.Height);
+
+			if (isLandscape)
+				forPrintArea = new RectangleF(forPrintArea.X, forPrintArea.Y, forPrintArea.Height, forPrintArea.Width);
+
 			//Calculate the size of the printable area in pixels
 			var fitSize = new SizeF(
-				(float)dpiX * printableArea.Width / 100.0f,
-				(float)dpiY * printableArea.Height / 100.0f
+				(float)dpiX * forPrintArea.Width / 100.0f,
+				(float)dpiY * forPrintArea.Height / 100.0f
 				);
 			var pageSize = new SizeF(
 				(float)width,
 				(float)height
 				);
 
-			bool isRotated = (width > height);
-
-			if (AutoRotate && isRotated)
-				fitSize = new SizeF(fitSize.Height, fitSize.Width);
-			else if (!AutoRotate && isLandscape)
-				fitSize = new SizeF(fitSize.Height, fitSize.Width);
+			if (OriginAtMargins && isLandscape)
+					fitSize = new SizeF(fitSize.Height, fitSize.Width);
 
 			switch (PrintSizeMode)
 			{
@@ -324,29 +386,19 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 					break;
 			}
 
+			x = forPrintArea.X * dpiX / 100 - hardMargin.X * dpiX / 100;
+			y = forPrintArea.Y * dpiY / 100 - hardMargin.Y * dpiY / 100;
+
 			if (AutoCenter)
 			{
-				x = (fitSize.Width - width) / 2;
-				y = (fitSize.Height - height) / 2;
+				x = x + (fitSize.Width - width) / 2;
+				y = y + (fitSize.Height - height) / 2;
 			}
-		}
 
-		private PageRotate CalcRotation(IntPtr currentPage, bool isLandscape, ref double width, ref double height, ref double x, ref double y)
-		{
-			var rot = Pdfium.FPDFPage_GetRotation(currentPage);
-			bool isRotated = (rot == PageRotate.Rotate270 || rot == PageRotate.Rotate90) || (width > height);
-
-			if (AutoRotate && isRotated != isLandscape)
-			{
-				double tmp = width;
-				width = height;
-				height = tmp;
-				tmp = x;
-				x = y;
-				y = tmp;
-				return rot == PageRotate.Rotate270 ? PageRotate.Rotate90 : PageRotate.Rotate270;
-			}
-			return PageRotate.Normal;
+			clipRect = new Rectangle((int)(marginBounds.Left * dpiX / 100),
+				(int)(marginBounds.Top * dpiY / 100),
+				(int)(marginBounds.Width * dpiX / 100),
+				(int)(marginBounds.Height * dpiX / 100));
 		}
 
 		private SizeF GetRenderSize(SizeF pageSize, SizeF fitSize)

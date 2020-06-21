@@ -6,18 +6,18 @@
     public enum PrintSizeMode
     {
         /// <summary>
-        /// Fit page
+        /// Fit page.
         /// </summary>
         Fit,
 
         /// <summary>
-        /// Actual size
+        /// Actual size.
         /// </summary>
         ActualSize,
 
         /// <summary>
-        /// Custom scale
+        /// Custom scale.
         /// </summary>
-        CustomScale
+        CustomScale,       
     }
 }
