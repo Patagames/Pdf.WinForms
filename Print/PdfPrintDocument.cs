@@ -99,6 +99,22 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <summary>
 		/// Initializes a new instance of the <see cref="PdfPrintDocument"/> class.
 		/// </summary>
+		public PdfPrintDocument()
+        {
+			_useDP = false;
+			AutoRotate = true;
+			AutoCenter = false;
+			RenderFlags = RenderFlags.FPDF_PRINTING | RenderFlags.FPDF_ANNOT;
+
+			PrinterSettings.MinimumPage = 1;
+			PrinterSettings.MaximumPage = 1;
+			PrinterSettings.FromPage = PrinterSettings.MinimumPage;
+			PrinterSettings.ToPage = PrinterSettings.MaximumPage;
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="PdfPrintDocument"/> class.
+		/// </summary>
 		/// <param name="Document">The document to print</param>
 		/// <param name="mode">Reserved. Must be zero.</param>
 		public PdfPrintDocument(PdfDocument Document, int mode = 0)
@@ -169,6 +185,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		protected override void OnBeginPrint(PrintEventArgs e)
 		{
 			base.OnBeginPrint(e);
+			if (_pdfDoc == null)
+				throw new ArgumentNullException("Document");
 
 			//Calculate range of pages for print
 			switch (PrinterSettings.PrintRange)
@@ -246,6 +264,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		protected override void OnPrintPage(PrintPageEventArgs e)
 		{
 			base.OnPrintPage(e);
+			if (_pdfDoc == null)
+				throw new ArgumentNullException("Document");
 
 			IntPtr hdc = IntPtr.Zero;
 			IntPtr currentPage = IntPtr.Zero;
@@ -275,7 +295,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				int iy = (int)y;
 				int iw = (int)width;
 				int ih = (int)height;
-				using (var page = PdfPage.FromHandle(_pdfDoc, currentPage, _pageForPrint))
+				using (var page = PdfPage.FromHandle(_pdfDoc, currentPage, _pageForPrint, true))
 					OnBeforeRenderPage(e.Graphics, page, ref ix, ref iy, ref iw, ref ih, PageRotate.Normal);
 
 				hdc = e.Graphics.GetHdc();
@@ -287,7 +307,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (hdc != IntPtr.Zero)
 					e.Graphics.ReleaseHdc(hdc);
 				hdc = IntPtr.Zero;
-				using (var page = PdfPage.FromHandle(_pdfDoc, currentPage, _pageForPrint))
+				using (var page = PdfPage.FromHandle(_pdfDoc, currentPage, _pageForPrint, true))
 					OnAfterRenderPage(e.Graphics, page, ix, iy, iw, ih, PageRotate.Normal);
 
 				//Print next page

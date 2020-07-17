@@ -39,7 +39,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms.Properties {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Patagames.Pdf.Net.Controls.WinForms.Properties.PdfToolStrip", typeof(PdfToolStrip).Assembly);
+                    string name = "Patagames.Pdf.Net.Controls.WinForms.Properties.PdfToolStrip";
+                    var asm = Pdfium.FindResource(ref name);
+                    if (asm == null)
+                        asm = typeof(PdfToolStrip).Assembly;
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager(name, asm);
                     resourceMan = temp;
                 }
                 return resourceMan;
