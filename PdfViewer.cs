@@ -285,7 +285,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// Raises the <see cref="BeforeDocumentChanged"/> event.
         /// </summary>
         /// <param name="e">An System.EventArgs that contains the event data.</param>
-        /// <returns>True if changing should be canceled, False otherwise</returns>
+        /// <returns>True if the change should be canceled; otherwise - False</returns>
         protected virtual bool OnBeforeDocumentChanged(DocumentClosingEventArgs e)
         {
             if (BeforeDocumentChanged != null)
@@ -307,7 +307,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// Raises the <see cref="DocumentClosing"/> event.
         /// </summary>
         /// <param name="e">An System.EventArgs that contains the event data.</param>
-        /// <returns>True if closing should be canceled, False otherwise</returns>
+        /// <returns>True if the close should be canceled; otherwise - False</returns>
         protected virtual bool OnDocumentClosing(DocumentClosingEventArgs e)
         {
             if (DocumentClosing != null)
