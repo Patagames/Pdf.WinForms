@@ -179,25 +179,46 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 		private void ProcessMenuClick()
 		{
+#if DOTNET50
+			var cm = new ContextMenuStrip();
+			var item = new ToolStripMenuItem(Properties.PdfToolStrip.menuItemMatchCase);
+			item.Tag = FindFlags.MatchCase;
+			item.Checked = ((FindFlags & FindFlags.MatchCase) == FindFlags.MatchCase);
+			item.Click += searchMenuItem_Click;
+			cm.Items.Add(item);
+#else
 			var cm = new ContextMenu();
 			var item = new MenuItem(Properties.PdfToolStrip.menuItemMatchCase);
 			item.Tag = FindFlags.MatchCase;
 			item.Checked = ((FindFlags & FindFlags.MatchCase) == FindFlags.MatchCase);
 			item.Click += searchMenuItem_Click;
 			cm.MenuItems.Add(item);
+#endif
 
+#if DOTNET50
+			item = new ToolStripMenuItem(Properties.PdfToolStrip.menuItemMatchWholeWord);
+			item.Tag = FindFlags.MatchWholeWord;
+			item.Checked = ((FindFlags & FindFlags.MatchWholeWord) == FindFlags.MatchWholeWord);
+			item.Click += searchMenuItem_Click;
+			cm.Items.Add(item);
+#else
 			item = new MenuItem(Properties.PdfToolStrip.menuItemMatchWholeWord);
 			item.Tag = FindFlags.MatchWholeWord;
 			item.Checked = ((FindFlags & FindFlags.MatchWholeWord) == FindFlags.MatchWholeWord);
 			item.Click += searchMenuItem_Click;
 			cm.MenuItems.Add(item);
+#endif
 
 			cm.Show(picMenu, new Point(-1, picMenu.Height));
 		}
 
 		private void searchMenuItem_Click(object sender, EventArgs e)
 		{
+#if DOTNET50
+			var flag = (FindFlags)(sender as ToolStripMenuItem).Tag;
+#else
 			var flag = (FindFlags)(sender as MenuItem).Tag;
+#endif
 			FindFlags ^= flag;
 			OnSearch();
 		}
@@ -221,9 +242,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			button.Padding = new Padding(0, 0, 0, 0);
 		}
 
-		#endregion
+#endregion
 
-		#region Text changed and timer
+#region Text changed and timer
 		private void tbSearch_TextChanged(object sender, EventArgs e)
 		{
 			lblInfo.Visible = (tbSearch.Text != "");
@@ -260,16 +281,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
                 e.SuppressKeyPress = true;
             }
         }
-        #endregion
+#endregion
 
-        #region Event handlers
+#region Event handlers
         private void pnlHostTextBox_Click(object sender, EventArgs e)
 		{
 			tbSearch.Focus();
 		}
-		#endregion
+#endregion
 
-		#region Private methods
+#region Private methods
 		private void EnableButton(PictureBox button, bool enabled)
 		{
 			switch (button.Name)
@@ -291,6 +312,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 				NeedSearch(this, EventArgs.Empty);
         }
 
-        #endregion
+#endregion
     }
 }

@@ -3528,12 +3528,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         {
             switch (e.Value)
             {
+#pragma warning disable CA1416
                 case BeepTypes.Default: System.Media.SystemSounds.Beep.Play(); break;
                 case BeepTypes.Error: System.Media.SystemSounds.Asterisk.Play(); break;
                 case BeepTypes.Question: System.Media.SystemSounds.Question.Play(); break;
                 case BeepTypes.Warning: System.Media.SystemSounds.Exclamation.Play(); break;
                 case BeepTypes.Status: System.Media.SystemSounds.Beep.Play(); break;
                 default: System.Media.SystemSounds.Beep.Play(); break;
+#pragma warning restore CA1416
             }
         }
 
