@@ -10,6 +10,8 @@ using Patagames.Pdf.Net.Exceptions;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using Patagames.Pdf.Net.Annotations;
+using Patagames.Pdf.Net.Actions;
+using Patagames.Pdf.Net.Wrappers;
 
 namespace Patagames.Pdf.Net.Controls.WinForms
 {
@@ -641,7 +643,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     SetScrollExtent(0, 0);
                     _selectInfo = new SelectInfo() { StartPage = -1 };
                     _highlightedText.Clear();
-                    _onstartPageIndex = 0;
+                    //_onstartPageIndex = 0;
                     _renderRects = null;
                     _loadedByViewer = false;
                     ReleaseFillForms(_externalDocCapture);
@@ -655,12 +657,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                         _document.Pages.PageInserted += Pages_PageInserted;
                         _document.Pages.PageDeleted += Pages_PageDeleted;
                         _document.Pages.ProgressiveRender += Pages_ProgressiveRender;
+                        if (Pdfium.IsFullAPI && _document.OpenDestination != null)
+                            _onstartPageIndex = _document.OpenDestination.PageIndex;
                         SetCurrentPage(_onstartPageIndex);
                         if (_document.Pages.Count > 0)
                             if (_onstartPageIndex != 0)
                                 ScrollToPage(_onstartPageIndex);
                             else
                                 AutoScrollPosition = new Point(0, 0);
+                        _onstartPageIndex = 0;
                     }
                     OnAfterDocumentChanged(EventArgs.Empty);
                 }
@@ -2615,28 +2620,88 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             OnBeforeLinkClicked(args);
             if (args.Cancel)
                 return;
-            if (pdfLink != null && pdfLink.Destination != null)
-                ProcessDestination(pdfLink.Destination);
-            else if (pdfLink != null && pdfLink.Action != null)
+            if (pdfLink != null && pdfLink.Action != null)
                 ProcessAction(pdfLink.Action);
+            else if (pdfLink != null && pdfLink.Destination != null)
+                ProcessDestination(pdfLink.Destination);
             else if (webLink != null)
                 Process.Start(webLink.Url);
             OnAfterLinkClicked(new PdfAfterLinkClickedEventArgs(webLink, pdfLink));
 
         }
 
-        private void ProcessDestination(PdfDestination pdfDestination)
+        /// <summary>
+        /// Process the <see cref="PdfDestination"/>.
+        /// </summary>
+        /// <param name="pdfDestination">PdfDestination to be performed.</param>
+        protected virtual void ProcessDestination(PdfDestination pdfDestination)
         {
+            if (pdfDestination == null)
+                return;
             ScrollToPage(pdfDestination.PageIndex);
             Invalidate();
         }
 
-        private void ProcessAction(PdfAction pdfAction)
+        /// <summary>
+        /// Process the <see cref="PdfAction"/>
+        /// </summary>
+        /// <param name="pdfAction">PdfAction to be performed.</param>
+        protected virtual void ProcessAction(PdfAction pdfAction)
         {
-            if (pdfAction.ActionType == ActionTypes.Uri)
-                Process.Start(pdfAction.ActionUrl);
-            else if (pdfAction.Destination != null)
-                ProcessDestination(pdfAction.Destination);
+            try
+            {
+                switch (pdfAction.ActionType)
+                {
+                    case ActionTypes.Uri:
+                        var ps = new ProcessStartInfo((pdfAction as PdfUriAction).ActionUrl) { UseShellExecute = true, Verb = "open" };
+                        Process.Start(ps);
+                        break;
+                    case ActionTypes.CurrentDoc:
+                        ProcessDestination((pdfAction as PdfGoToAction).Destination);
+                        break;
+                    case ActionTypes.EmbeddedDoc:
+                        ProcesRemoteGotoAction((pdfAction as PdfGoToEAction).Destination, (pdfAction as PdfGoToEAction).FileSpecification);
+                        break;
+                    case ActionTypes.ExternalDoc:
+                        ProcesRemoteGotoAction((pdfAction as PdfGoToRAction).Destination, (pdfAction as PdfGoToRAction).FileSpecification);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentNullException || ex is ArgumentException || ex is NotSupportedException
+                    || ex is InvalidOperationException || ex is Win32Exception || ex is NoLicenseException)
+                    MessageBox.Show(this, ex.Message, Properties.Error.ErrorHeader, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                else
+                    throw;
+            }
+        }
+
+        private void ProcesRemoteGotoAction(PdfDestination destination, PdfFileSpecification fileSpecification)
+        {
+            if (fileSpecification == null)
+                throw new ArgumentNullException("fileSpecification");
+
+            if (fileSpecification.EmbeddedFile != null)
+            {
+                if (fileSpecification.EmbeddedFile.Stream == null)
+                    throw new ArgumentNullException("EmbeddedFile.Stream");
+                LoadDocument(fileSpecification.EmbeddedFile.Stream.DecodedData);
+            }
+            else
+            {
+
+                if (fileSpecification.FileName == null)
+                    throw new ArgumentNullException("EmbeddedFile.FileName");
+                LoadDocument(fileSpecification.FileName);
+            }
+
+            if (destination != null && destination.Name != null && Document.NamedDestinations[destination.Name] != null)
+                ProcessDestination(Document.NamedDestinations[destination.Name]);
+            else
+                ProcessDestination(destination);
         }
 
         private int CalcCurrentPage()

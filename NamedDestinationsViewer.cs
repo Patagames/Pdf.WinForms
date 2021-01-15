@@ -141,8 +141,17 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 			if (_pdfViewer == null)
 				return;
-			_pdfViewer.ScrollToPage(pdfDestination.PageIndex);
-			_pdfViewer.Invalidate();
+			System.Reflection.MethodInfo mi = typeof(PdfViewer).GetMethod("ProcessDestination", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			try
+			{
+				object[] parameters = { pdfDestination };
+				mi.Invoke(_pdfViewer, parameters);
+			}
+			catch (System.Reflection.TargetInvocationException ex)
+			{
+				throw ex.InnerException;
+			}
+			//_pdfViewer.ProcessDestination(pdfDestination);
 		}
 		#endregion
 

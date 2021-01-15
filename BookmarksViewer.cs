@@ -1,7 +1,5 @@
-﻿using Patagames.Pdf.Enums;
-using System;
+﻿using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace Patagames.Pdf.Net.Controls.WinForms
@@ -135,18 +133,36 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		private void ProcessAction(PdfAction pdfAction)
 		{
-			if (pdfAction.ActionType == ActionTypes.Uri)
-				Process.Start(pdfAction.ActionUrl);
-			else if (pdfAction.Destination != null)
-				ProcessDestination(pdfAction.Destination);
+			if (_pdfViewer == null)
+				return;
+			System.Reflection.MethodInfo mi = typeof(PdfViewer).GetMethod("ProcessAction", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			try
+			{
+				object[] parameters = { pdfAction };
+				mi.Invoke(_pdfViewer, parameters);
+			}
+			catch (System.Reflection.TargetInvocationException ex)
+			{
+				throw ex.InnerException;
+			}
+			//_pdfViewer.ProcessAction(pdfAction);
 		}
 
 		private void ProcessDestination(PdfDestination pdfDestination)
 		{
 			if (_pdfViewer == null)
 				return;
-			_pdfViewer.ScrollToPage(pdfDestination.PageIndex);
-			_pdfViewer.Invalidate();
+			System.Reflection.MethodInfo mi = typeof(PdfViewer).GetMethod("ProcessDestination", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			try
+			{
+				object[] parameters = { pdfDestination };
+				mi.Invoke(_pdfViewer, parameters);
+			}
+			catch (System.Reflection.TargetInvocationException ex)
+			{
+				throw ex.InnerException;
+			}
+			//_pdfViewer.ProcessDestination(pdfDestination);
 		}
 		#endregion
 
