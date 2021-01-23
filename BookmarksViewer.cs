@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Forms;
 
@@ -117,17 +118,20 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		#endregion
 
 		#region Private methods
-		private void BuildTree(TreeNodeCollection nodes, PdfBookmarkCollections bookmarks)
+		private void BuildTree(TreeNodeCollection nodes, PdfBookmarkCollections bookmarks, Dictionary<IntPtr, int> processed)
 		{
 			if (bookmarks == null)
 				return;
 
 			foreach (var b in bookmarks)
 			{
+				if (processed.ContainsKey(b.Handle))
+					return;
+				processed.Add(b.Handle, 1);
 				var node = new BookmarksViewerNode(b);
 				nodes.Add(node);
 				if (b.Childs != null && b.Childs.Count > 0)
-					BuildTree(node.Nodes, b.Childs);
+					BuildTree(node.Nodes, b.Childs, processed);
 			}
 		}
 
@@ -173,8 +177,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public void RebuildTree()
 		{
 			Nodes.Clear();
+			var processed = new Dictionary<IntPtr, int>();
 			if (_pdfViewer != null && _pdfViewer.Document != null)
-				BuildTree(Nodes, _pdfViewer.Document.Bookmarks);
+				BuildTree(Nodes, _pdfViewer.Document.Bookmarks, processed);
 		}
 		#endregion
 	}
