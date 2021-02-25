@@ -624,6 +624,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     if (OnBeforeDocumentChanged(new DocumentClosingEventArgs()))
                         return;
 
+                    _prPages.ReleaseCanvas();
                     if (_document!= null && _loadedByViewer)
                     {
                         //we need to close the previous document if it was loaded by viewer
@@ -1958,7 +1959,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     Rectangle actualRect = CalcActualRect(i);
                     if (!actualRect.IntersectsWith(ClientRectangle))
                     {
-                        if (PageAutoDispose && CanDisposePage(i))
+                        if (Document.Pages[i].IsLoaded && PageAutoDispose && CanDisposePage(i))
                             Document.Pages[i].Dispose();  //do not dispose the page if it contains highlighted  or selected text. fix for #052325
                         continue; //Page is invisible. Skip it
                     }
@@ -2634,11 +2635,75 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// Process the <see cref="PdfDestination"/>.
         /// </summary>
         /// <param name="pdfDestination">PdfDestination to be performed.</param>
-        protected virtual void ProcessDestination(PdfDestination pdfDestination)
+        public virtual void ProcessDestination(PdfDestination pdfDestination)
         {
             if (pdfDestination == null)
                 return;
-            ScrollToPage(pdfDestination.PageIndex);
+            float left = pdfDestination.Left ?? 0;
+            float top = pdfDestination.Top ?? 0;
+            float right = pdfDestination.Right ?? 0;
+            float bottom = pdfDestination.Bottom ?? 0;
+            float zoom = pdfDestination.Zoom ?? 0;
+            var type = pdfDestination.DestinationType;
+            float width = Math.Max(left, right) - Math.Min(left, right);
+            float height = Math.Max(top, bottom) - Math.Min(top, bottom);
+            var clntWidth = Size.Width - System.Windows.Forms.SystemInformation.VerticalScrollBarWidth;
+            var clntHeight = Size.Height - System.Windows.Forms.SystemInformation.HorizontalScrollBarHeight;
+            float kHorz = 1;
+            float kVert = 1;
+
+            if (type== DestinationTypes.FitB || type == DestinationTypes.FitBV || type == DestinationTypes.FitBH)
+            {
+                var bbox = Document.Pages[pdfDestination.PageIndex].PageObjects.CalcuateBoundingBox();
+                left = type == DestinationTypes.FitBV ? left : bbox.left;
+                top = type == DestinationTypes.FitBH ? top : bbox.top;
+                width = Math.Max(bbox.left, bbox.right) - Math.Min(bbox.left, bbox.right);
+                height = Math.Max(bbox.top, bbox.bottom) - Math.Min(bbox.top, bbox.bottom);
+            }
+
+            switch (type)
+            {
+                case DestinationTypes.XYZ:
+                    if(zoom> 0)
+                    {
+                        SizeMode = SizeModes.Zoom;
+                        Zoom = zoom;
+                    }
+                    ScrollToPoint(pdfDestination.PageIndex, new PointF(left, top));
+                    break;
+                case DestinationTypes.Fit:
+                    SizeMode = SizeModes.FitToSize;
+                    ScrollToPage(pdfDestination.PageIndex);
+                    break;
+                case DestinationTypes.FitH:
+                    SizeMode = SizeModes.FitToWidth;
+                    ScrollToPoint(pdfDestination.PageIndex, new PointF(0, top));
+                    break;
+                case DestinationTypes.FitV:
+                    SizeMode = SizeModes.FitToHeight;
+                    ScrollToPoint(pdfDestination.PageIndex, new PointF(left, 0));
+                    break;
+                case DestinationTypes.FitB:
+                case DestinationTypes.FitR:
+                    kHorz = clntWidth / (width / 72.0f * 96);
+                    kVert = clntHeight / (height / 72.0f * 96);
+                    SizeMode = SizeModes.Zoom;
+                    Zoom = Math.Min(kHorz, kVert);
+                    ScrollToPoint(pdfDestination.PageIndex, new PointF(left, top));
+                    break;
+                case DestinationTypes.FitBH:
+                    kHorz = clntWidth / (width / 72.0f * 96);
+                    SizeMode = SizeModes.Zoom;
+                    Zoom = kHorz;
+                    ScrollToPoint(pdfDestination.PageIndex, new PointF(left, top));
+                    break;
+                case DestinationTypes.FitBV:
+                    kVert = clntHeight / (height / 72.0f * 96);
+                    SizeMode = SizeModes.Zoom;
+                    Zoom = kVert;
+                    ScrollToPoint(pdfDestination.PageIndex, new PointF(left, top));
+                    break;
+            }
             Invalidate();
         }
 
@@ -2646,7 +2711,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// Process the <see cref="PdfAction"/>
         /// </summary>
         /// <param name="pdfAction">PdfAction to be performed.</param>
-        protected virtual void ProcessAction(PdfAction pdfAction)
+        public virtual void ProcessAction(PdfAction pdfAction)
         {
             try
             {

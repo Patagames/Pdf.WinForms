@@ -13,6 +13,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
 		#region Private fields
 		private PdfViewer _pdfViewer = null;
+		private Dictionary<IntPtr, int> _processed = new Dictionary<IntPtr, int>();
 		#endregion
 
 		#region Public Properties
@@ -98,6 +99,43 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			_pdfViewer = newValue;
 			RebuildTree();
 		}
+
+		/// <summary>
+		/// Creates child nodes and raises the System.Windows.Forms.TreeView.BeforeExpand event.
+		/// </summary>
+		/// <param name="e"></param>
+		protected override void OnBeforeExpand(TreeViewCancelEventArgs e)
+		{
+			if (e.Node.Nodes.Count == 1 && e.Node.Nodes.ContainsKey("{C5C14465-60FB-448D-A3BD-8F5E855C081D}"))
+			{
+				e.Node.Nodes.Clear();
+				BuildTree(e.Node.Nodes, (e.Node as BookmarksViewerNode).Bookmark.Childs);
+			}
+			base.OnBeforeExpand(e);
+		}
+
+        /// <summary>
+        /// Process the <see cref="PdfAction"/>.
+        /// </summary>
+        /// <param name="pdfAction">PdfAction to be performed.</param>
+        protected virtual void ProcessAction(PdfAction pdfAction)
+		{
+			if (_pdfViewer == null)
+				return;
+			_pdfViewer.ProcessAction(pdfAction);
+		}
+
+
+		/// <summary>
+		/// Process the <see cref="PdfDestination"/>.
+		/// </summary>
+		/// <param name="pdfDestination">PdfDestination to be performed.</param>
+		protected virtual void ProcessDestination(PdfDestination pdfDestination)
+		{
+			if (_pdfViewer == null)
+				return;
+			_pdfViewer.ProcessDestination(pdfDestination);
+		}
 		#endregion
 
 		#region Private event handlers
@@ -118,55 +156,21 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		#endregion
 
 		#region Private methods
-		private void BuildTree(TreeNodeCollection nodes, PdfBookmarkCollections bookmarks, Dictionary<IntPtr, int> processed)
+		private void BuildTree(TreeNodeCollection nodes, PdfBookmarkCollections bookmarks)
 		{
 			if (bookmarks == null)
 				return;
 
 			foreach (var b in bookmarks)
 			{
-				if (processed.ContainsKey(b.Handle))
-					return;
-				processed.Add(b.Handle, 1);
+				if (_processed.ContainsKey(b.Handle))
+					continue;
+				_processed.Add(b.Handle, 1);
 				var node = new BookmarksViewerNode(b);
 				nodes.Add(node);
 				if (b.Childs != null && b.Childs.Count > 0)
-					BuildTree(node.Nodes, b.Childs, processed);
+					node.Nodes.Add("{C5C14465-60FB-448D-A3BD-8F5E855C081D}", "Loading...");
 			}
-		}
-
-		private void ProcessAction(PdfAction pdfAction)
-		{
-			if (_pdfViewer == null)
-				return;
-			System.Reflection.MethodInfo mi = typeof(PdfViewer).GetMethod("ProcessAction", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-			try
-			{
-				object[] parameters = { pdfAction };
-				mi.Invoke(_pdfViewer, parameters);
-			}
-			catch (System.Reflection.TargetInvocationException ex)
-			{
-				throw ex.InnerException;
-			}
-			//_pdfViewer.ProcessAction(pdfAction);
-		}
-
-		private void ProcessDestination(PdfDestination pdfDestination)
-		{
-			if (_pdfViewer == null)
-				return;
-			System.Reflection.MethodInfo mi = typeof(PdfViewer).GetMethod("ProcessDestination", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-			try
-			{
-				object[] parameters = { pdfDestination };
-				mi.Invoke(_pdfViewer, parameters);
-			}
-			catch (System.Reflection.TargetInvocationException ex)
-			{
-				throw ex.InnerException;
-			}
-			//_pdfViewer.ProcessDestination(pdfDestination);
 		}
 		#endregion
 
@@ -177,10 +181,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		public void RebuildTree()
 		{
 			Nodes.Clear();
-			var processed = new Dictionary<IntPtr, int>();
+			_processed.Clear();
 			if (_pdfViewer != null && _pdfViewer.Document != null)
-				BuildTree(Nodes, _pdfViewer.Document.Bookmarks, processed);
+				BuildTree(Nodes, _pdfViewer.Document.Bookmarks);
 		}
-		#endregion
-	}
+        #endregion
+    }
 }

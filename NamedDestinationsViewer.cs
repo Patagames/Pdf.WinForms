@@ -99,6 +99,17 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			_pdfViewer = newValue;
 			RebuildList();
 		}
+
+		/// <summary>
+		/// Process the <see cref="PdfDestination"/>.
+		/// </summary>
+		/// <param name="pdfDestination">PdfDestination to be performed.</param>
+		protected virtual void ProcessDestination(PdfDestination pdfDestination)
+		{
+			if (_pdfViewer == null)
+				return;
+			_pdfViewer.ProcessDestination(pdfDestination);
+		}
 		#endregion
 
 		#region Private event handlers
@@ -135,23 +146,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 				if (item.Destination != null)
 					ProcessDestination(item.Destination);
 			}
-		}
-
-		private void ProcessDestination(PdfDestination pdfDestination)
-		{
-			if (_pdfViewer == null)
-				return;
-			System.Reflection.MethodInfo mi = typeof(PdfViewer).GetMethod("ProcessDestination", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-			try
-			{
-				object[] parameters = { pdfDestination };
-				mi.Invoke(_pdfViewer, parameters);
-			}
-			catch (System.Reflection.TargetInvocationException ex)
-			{
-				throw ex.InnerException;
-			}
-			//_pdfViewer.ProcessDestination(pdfDestination);
 		}
 		#endregion
 
