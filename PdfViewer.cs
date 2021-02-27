@@ -2920,8 +2920,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             Pdfium.FPDF_GetPageSizeByIndex(Document.Handle, index, out w, out h);
 
             //converts PDF points which is 1/72 inch to Pixels which is depends on DPI.
-            w = w / 72.0 * GetDpi();
-            h = h / 72.0 * GetDpi();
+            w = w * _actualSizeFactor();
+            h = h * _actualSizeFactor();
 
             SizeF ret;
             switch (ViewMode)
@@ -2941,6 +2941,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             if (SizeMode != SizeModes.Zoom)
                 _zoom = (float)(ret.Width / w);
             return ret;
+        }
+
+        internal float _actualSizeFactor()
+        {
+            float dpi = GetDpi();
+            return dpi / 72.0f / (dpi / 96);
+            //1. dpi / 72 - to convert PDF points to independent points.
+            //2. dpi / 96 - scale factor.
         }
 
         private SizeF CalcAppropriateSize(double w, double h, double fitWidth, double fitHeight)
