@@ -606,7 +606,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// Gets the Forms object associated with the current PdfViewer control.
         /// </summary>
         /// <remarks>The FillForms object are used for the correct processing of forms within the PdfViewer control</remarks>
-        public PdfForms FillForms { get { return _fillForms; } }
+        public PdfForms FillForms { get { return Document != null && Document.FormFill != null ? Document.FormFill : _fillForms; } }
 
         /// <summary>
         /// Gets or sets the PDF document associated with the current PdfViewer control.
