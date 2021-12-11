@@ -108,7 +108,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		{
 #if PDF_ENABLE_XFA
             if (page.Document.FormFill != null && page.Document.FormFill.DocumentType == DocumentTypes.DynamicXfa)
-                this[page].status = ProgressiveRenderingStatuses.RenderDone + 2;
+                this[page].status = ProgressiveStatus.Done + 2;
 #endif
                 switch (this[page].status)
 			{
