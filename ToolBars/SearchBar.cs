@@ -179,7 +179,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 		private void ProcessMenuClick()
 		{
-#if DOTNET50
+#if DOTNET50 || DOTNET60
 			var cm = new ContextMenuStrip();
 			var item = new ToolStripMenuItem(Properties.PdfToolStrip.menuItemMatchCase);
 			item.Tag = FindFlags.MatchCase;
@@ -195,7 +195,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 			cm.MenuItems.Add(item);
 #endif
 
-#if DOTNET50
+#if DOTNET50 || DOTNET60
 			item = new ToolStripMenuItem(Properties.PdfToolStrip.menuItemMatchWholeWord);
 			item.Tag = FindFlags.MatchWholeWord;
 			item.Checked = ((FindFlags & FindFlags.MatchWholeWord) == FindFlags.MatchWholeWord);
@@ -214,7 +214,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 		private void searchMenuItem_Click(object sender, EventArgs e)
 		{
-#if DOTNET50
+#if DOTNET50 || DOTNET60
 			var flag = (FindFlags)(sender as ToolStripMenuItem).Tag;
 #else
 			var flag = (FindFlags)(sender as MenuItem).Tag;

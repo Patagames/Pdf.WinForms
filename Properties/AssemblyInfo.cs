@@ -9,8 +9,8 @@ using System.Runtime.InteropServices;
 //      Revision -.Net framework
 
 //---------------------------- WinForms Viewer -------------------------------------------------
-[assembly: AssemblyInformationalVersion("4.68.2704")]  //Should be equal to the same property of Patagames.Pdf assembly
-[assembly: AssemblyVersion("4.20.17." +
+[assembly: AssemblyInformationalVersion("4.69.2704")]  //Should be equal to the same property of Patagames.Pdf assembly
+[assembly: AssemblyVersion("4.21.17." +
 #if DOTNET20
 "20"
 #elif DOTNET30
@@ -41,6 +41,8 @@ using System.Runtime.InteropServices;
 "48"
 #elif DOTNET50
 "50"
+#elif DOTNET60
+"60"
 #else
 "0"
 #endif
@@ -79,6 +81,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("Patagames Pdf.Net SDK - WinForms controls (.net 4.8)")]
 #elif DOTNET50
 [assembly: AssemblyTitle("Patagames Pdf.Net SDK - WinForms controls (.net 5.0)")]
+#elif DOTNET60
+[assembly: AssemblyTitle("Patagames Pdf.Net SDK - WinForms controls (.net 6.0)")]
 #else
 [assembly: AssemblyTitle("Patagames Pdf.Net SDK - WinForms controls")]
 #endif
