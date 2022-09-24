@@ -2355,7 +2355,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             {
                 var rects = GetHighlightedRects(pageIndex, e);
                 foreach (var r in rects)
-                    bitmap.FillRectEx(r.Left, r.Top, r.Width, r.Height, e.Color.ToArgb(), FormsBlendMode);
+                {
+                    r.Intersect(ClientRectangle);
+                    if (r.Width > 0 && r.Height > 0)
+                        bitmap.FillRectEx(r.Left, r.Top, r.Width, r.Height, e.Color.ToArgb(), FormsBlendMode);
+                }
             }
         }
 
@@ -2376,7 +2380,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             {
                 var rects = GetSelectedRects(pageIndex, selInfo);
                 foreach (var r in rects)
-                    bitmap.FillRectEx(r.X, r.Y, r.Width, r.Height, TextSelectColor.ToArgb(), FormsBlendMode);
+                {
+                    r.Intersect(ClientRectangle);
+                    if (r.Width > 0 && r.Height > 0)
+                        bitmap.FillRectEx(r.X, r.Y, r.Width, r.Height, TextSelectColor.ToArgb(), FormsBlendMode);
+                }
             }
         }
 
