@@ -54,16 +54,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			}
 			set
 			{
-				if (value == null)
-					throw new ArgumentNullException("Document");
 				if (_pdfDoc != value)
 				{
 					_pdfDoc = value;
 					PrinterSettings.MinimumPage = 1;
-					PrinterSettings.MaximumPage = _pdfDoc.Pages.Count;
+					PrinterSettings.MaximumPage = _pdfDoc == null ? 1 : _pdfDoc.Pages.Count;
 					PrinterSettings.FromPage = PrinterSettings.MinimumPage;
 					PrinterSettings.ToPage = PrinterSettings.MaximumPage;
-				}
+                }
 			}
 		}
 
