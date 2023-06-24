@@ -1383,7 +1383,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 throw new IndexOutOfRangeException(Properties.Error.err0002);
             var page = Document.Pages[pageIndex];
             var ar = CalcActualRect(pageIndex);
-            return page.DeviceToPageEx(ar.X, ar.Y, ar.Width, ar.Height, PageRotation(page), pt.X, pt.Y);
+            var ret = page.DeviceToPage(ar.X, ar.Y, ar.Width, ar.Height, PageRotation(page), pt.X, pt.Y);
+            return new PointF(ret.X, ret.Y);
         }
 
         /// <summary>
@@ -1400,7 +1401,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 throw new IndexOutOfRangeException(Properties.Error.err0002);
             var page = Document.Pages[pageIndex];
             var ar = CalcActualRect(pageIndex);
-            return page.PageToDeviceEx(ar.X, ar.Y, ar.Width, ar.Height, PageRotation(page), pt.X, pt.Y);
+            page.PageToDevice(ar.X, ar.Y, ar.Width, ar.Height, PageRotation(page), pt.X, pt.Y, out int devX, out int devY);
+            return new Point(devX, devY);
         }
 
 
@@ -2491,9 +2493,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         protected virtual void DrawRenderedPagesToDevice(Graphics graphics, PdfBitmap canvasBitmap, PdfBitmap formsBitmap, Size canvasSize)
         {
             if (formsBitmap == null)
-                graphics.DrawImageUnscaled(canvasBitmap.Image, 0, 0);
+                graphics.DrawImageUnscaled(canvasBitmap.GetImage(), 0, 0);
             else
-                graphics.DrawImageUnscaled(formsBitmap.Image, 0, 0);
+                graphics.DrawImageUnscaled(formsBitmap.GetImage(), 0, 0);
         }
 
 
@@ -3030,10 +3032,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 if (!rect.Contains(x, y))
                     continue;
 
-                pagePoint = Document.Pages[i].DeviceToPageEx(
+                var tmp = Document.Pages[i].DeviceToPage(
                     rect.X, rect.Y,
                     rect.Width, rect.Height,
                     PageRotation(Document.Pages[i]), x, y);
+                pagePoint = new PointF(tmp.X, tmp.Y);
 
                 return i;
             }
@@ -3048,11 +3051,12 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             rect.X += AutoScrollPosition.X;
             rect.Y += AutoScrollPosition.Y;
 
-            return Document.Pages[pageIndex].PageToDeviceEx(
+            Document.Pages[pageIndex].PageToDevice(
                     rect.X, rect.Y,
                     rect.Width, rect.Height,
                     PageRotation(Document.Pages[pageIndex]),
-                    x, y);
+                    x, y, out int devX, out int devY);
+            return new Point(devX, devY);
         }
 
         private Rectangle PageToDeviceRect(FS_RECTF rc, int pageIndex)
