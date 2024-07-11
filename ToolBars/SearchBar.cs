@@ -179,47 +179,46 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 		private void ProcessMenuClick()
 		{
-#if DOTNET50 || DOTNET60 || DOTNET70
+#if DOTNET20 || DOTNET30 || DOTNET35 || DOTNET40 || DOTNET45 || DOTNET451 || DOTNET452 || DOTNET46 || DOTNET461 || DOTNET462 || DOTNET47 || DOTNET471 || DOTNET472 || DOTNET48 || DOTNET481
+            var cm = new ContextMenu();
+            var item = new MenuItem(Properties.PdfToolStrip.menuItemMatchCase);
+            item.Tag = FindFlags.MatchCase;
+            item.Checked = ((FindFlags & FindFlags.MatchCase) == FindFlags.MatchCase);
+            item.Click += searchMenuItem_Click;
+            cm.MenuItems.Add(item);
+#else
 			var cm = new ContextMenuStrip();
 			var item = new ToolStripMenuItem(Properties.PdfToolStrip.menuItemMatchCase);
 			item.Tag = FindFlags.MatchCase;
 			item.Checked = ((FindFlags & FindFlags.MatchCase) == FindFlags.MatchCase);
 			item.Click += searchMenuItem_Click;
 			cm.Items.Add(item);
-#else
-            var cm = new ContextMenu();
-			var item = new MenuItem(Properties.PdfToolStrip.menuItemMatchCase);
-			item.Tag = FindFlags.MatchCase;
-			item.Checked = ((FindFlags & FindFlags.MatchCase) == FindFlags.MatchCase);
-			item.Click += searchMenuItem_Click;
-			cm.MenuItems.Add(item);
 #endif
 
-#if DOTNET50 || DOTNET60 || DOTNET70
+#if DOTNET20 || DOTNET30 || DOTNET35 || DOTNET40 || DOTNET45 || DOTNET451 || DOTNET452 || DOTNET46 || DOTNET461 || DOTNET462 || DOTNET47 || DOTNET471 || DOTNET472 || DOTNET48 || DOTNET481
+            item = new MenuItem(Properties.PdfToolStrip.menuItemMatchWholeWord);
+            item.Tag = FindFlags.MatchWholeWord;
+            item.Checked = ((FindFlags & FindFlags.MatchWholeWord) == FindFlags.MatchWholeWord);
+            item.Click += searchMenuItem_Click;
+            cm.MenuItems.Add(item);
+#else
 			item = new ToolStripMenuItem(Properties.PdfToolStrip.menuItemMatchWholeWord);
 			item.Tag = FindFlags.MatchWholeWord;
 			item.Checked = ((FindFlags & FindFlags.MatchWholeWord) == FindFlags.MatchWholeWord);
 			item.Click += searchMenuItem_Click;
 			cm.Items.Add(item);
-#else
-            item = new MenuItem(Properties.PdfToolStrip.menuItemMatchWholeWord);
-			item.Tag = FindFlags.MatchWholeWord;
-			item.Checked = ((FindFlags & FindFlags.MatchWholeWord) == FindFlags.MatchWholeWord);
-			item.Click += searchMenuItem_Click;
-			cm.MenuItems.Add(item);
 #endif
-
-			cm.Show(picMenu, new Point(-1, picMenu.Height));
+            cm.Show(picMenu, new Point(-1, picMenu.Height));
 		}
 
 		private void searchMenuItem_Click(object sender, EventArgs e)
 		{
-#if DOTNET50 || DOTNET60 || DOTNET70
-			var flag = (FindFlags)(sender as ToolStripMenuItem).Tag;
-#else
+#if DOTNET20 || DOTNET30 || DOTNET35 || DOTNET40 || DOTNET45 || DOTNET451 || DOTNET452 || DOTNET46 || DOTNET461 || DOTNET462 || DOTNET47 || DOTNET471 || DOTNET472 || DOTNET48 || DOTNET481
             var flag = (FindFlags)(sender as MenuItem).Tag;
+#else
+			var flag = (FindFlags)(sender as ToolStripMenuItem).Tag;
 #endif
-			FindFlags ^= flag;
+            FindFlags ^= flag;
 			OnSearch();
 		}
 
