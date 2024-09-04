@@ -25,7 +25,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         private int _dpi = -1;
         private SelectInfo _selectInfo = new SelectInfo() { StartPage = -1 };
         private SortedDictionary<int, List<HighlightInfo>> _highlightedText = new SortedDictionary<int, List<HighlightInfo>>();
-        private bool _mousePressed = false;
+        private bool __mousePressed = false;
+        private bool _mousePressed { get =>__mousePressed && (Control.MouseButtons & MouseButtons.Left) != 0; set => __mousePressed = value; }
         private bool _mousePressedInLink = false;
         private bool _isShowSelection = false;
         private int _onstartPageIndex = 0;
