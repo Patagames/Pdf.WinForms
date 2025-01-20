@@ -33,6 +33,16 @@
         /// <summary>
         /// View pages side-by-side
         /// </summary>
-        TilesLine
+        TilesLine,
+
+        /// <summary>
+        /// View pages side-by-side and right-to-left page flow.
+        /// </summary>
+        TilesLineRTL,
+
+        /// <summary>
+        /// View pages side-by-side with continuous scrolling enabled at vertical dimension and right-to-left page flow.
+        /// </summary>
+        TilesVerticalRTL
     }
 }

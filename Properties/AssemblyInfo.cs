@@ -9,8 +9,8 @@ using System.Runtime.InteropServices;
 //      Revision -.Net framework
 
 //---------------------------- WinForms Viewer -------------------------------------------------
-[assembly: AssemblyInformationalVersion("4.94.2704")]  //Should be equal to the same property of Patagames.Pdf assembly
-[assembly: AssemblyVersion("4.28.18." +
+[assembly: AssemblyInformationalVersion("4.95.2704")]  //Should be equal to the same property of Patagames.Pdf assembly
+[assembly: AssemblyVersion("4.29.18." +
 #if DOTNET20
 "20"
 #elif DOTNET30
@@ -102,10 +102,10 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Patagames Software")]
 [assembly: AssemblyProduct("Patagames Pdf.Net SDK")]
-[assembly: AssemblyCopyright("Copyright ©  2024")]
+[assembly: AssemblyCopyright("Copyright ©  2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
-#if DOTNET50 || DOTNET60 || DOTNET70 || DOTNET80
+#if !DOTNET20 && !DOTNET30 && !DOTNET35 && !DOTNET40 && !DOTNET45 && !DOTNET451 && !DOTNET452 && !DOTNET46 && !DOTNET461 && !DOTNET462 && !DOTNET47 && !DOTNET471 && !DOTNET472 && !DOTNET48 && !DOTNET481
 [assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("windows")]
 #endif
 

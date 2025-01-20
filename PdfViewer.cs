@@ -72,6 +72,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     case ViewModes.SinglePage:
                         return Document.Pages.CurrentIndex;
                     case ViewModes.TilesLine:
+                    case ViewModes.TilesLineRTL:
                         return Document.Pages.CurrentIndex % TilesCount == 0 ? Document.Pages.CurrentIndex : Document.Pages.CurrentIndex - Document.Pages.CurrentIndex % TilesCount;
                     default:
                         return 0;
@@ -89,6 +90,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     case ViewModes.SinglePage:
                         return Document.Pages.CurrentIndex;
                     case ViewModes.TilesLine:
+                    case ViewModes.TilesLineRTL:
                         return Math.Min(_startPage + TilesCount-1, _renderRects != null ? _renderRects.Length - 1 : -1);
                     default:
                         return _renderRects != null ? _renderRects.Length - 1 : -1;
@@ -118,6 +120,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
         private enum SmoothSelection { None, ByCharacter, ByLine }
         private SmoothSelection _smoothSelection;
+        private bool _enableRTL = false;
         #endregion
 
         #region Events
@@ -896,6 +899,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             {
                 if (_viewMode != value)
                 {
+                    _enableRTL = (value == ViewModes.TilesLineRTL || value == ViewModes.TilesVerticalRTL);
                     _viewMode = value;
                     UpdateLayout();
                     OnViewModeChanged(EventArgs.Empty);
@@ -1190,7 +1194,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             if (index < 0 || index > Document.Pages.Count - 1)
                 return;
 
-            if (ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine)
+            if (ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine || ViewMode == ViewModes.TilesLineRTL)
             {
                 if (index != CurrentIndex)
                 {
@@ -2808,45 +2812,49 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
         private void CalcPageSeparator(Rectangle actualRect, int pageIndex, ref List<Point> separator)
         {
-            if (!ShowPageSeparator || pageIndex == _endPage || ViewMode == ViewModes.SinglePage)
+            if (!ShowPageSeparator || ViewMode == ViewModes.SinglePage)
                 return;
             switch (ViewMode)
             {
                 case ViewModes.Vertical:
-                    separator.Add(new Point(actualRect.X, actualRect.Bottom + PageMargin.Bottom));
-                    separator.Add(new Point(actualRect.Right, actualRect.Bottom + PageMargin.Bottom));
+                    if (pageIndex == 0) break;
+                    separator.Add(new Point(actualRect.X, actualRect.Top - PageMargin.Top));
+                    separator.Add(new Point(actualRect.Right, actualRect.Top - PageMargin.Top));
+                    break;
+                case ViewModes.Horizontal:
+                    if (pageIndex == 0) break;
+                    separator.Add(new Point(actualRect.Left - PageMargin.Left, actualRect.Top));
+                    separator.Add(new Point(actualRect.Left - PageMargin.Left, actualRect.Bottom));
                     break;
                 case ViewModes.TilesLine:
-                case ViewModes.Horizontal:
-                    separator.Add(new Point(actualRect.Right + PageMargin.Right, actualRect.Top));
-                    separator.Add(new Point(actualRect.Right + PageMargin.Right, actualRect.Bottom));
-                    break;
+                case ViewModes.TilesLineRTL:
                 case ViewModes.TilesVertical:
-                    if ((pageIndex+1) % TilesCount != 0)
+                case ViewModes.TilesVerticalRTL:
+                    if (pageIndex % TilesCount != 0)
                     {
                         //vertical
-                        separator.Add(new Point(actualRect.Right + PageMargin.Right, actualRect.Top));
-                        separator.Add(new Point(actualRect.Right + PageMargin.Right, actualRect.Bottom));
+                        separator.Add(new Point(_enableRTL ? (actualRect.Right + PageMargin.Right) : (actualRect.Left - PageMargin.Left), actualRect.Top));
+                        separator.Add(new Point(_enableRTL ? (actualRect.Right + PageMargin.Right) : (actualRect.Left - PageMargin.Left), actualRect.Bottom));
                     }
-                    if (pageIndex <= _endPage - TilesCount)
+                    if (ViewMode != ViewModes.TilesLine && ViewMode != ViewModes.TilesLineRTL && pageIndex >= TilesCount)
                     {
                         //horizontal
-                        separator.Add(new Point(actualRect.X, actualRect.Bottom + PageMargin.Bottom));
-                        separator.Add(new Point(actualRect.Right, actualRect.Bottom + PageMargin.Bottom));
+                        separator.Add(new Point(actualRect.X, actualRect.Top - PageMargin.Top));
+                        separator.Add(new Point(actualRect.Right, actualRect.Top - PageMargin.Top));
                     }
                     break;
                 case ViewModes.TilesHorizontal:
-                    if (pageIndex <= _endPage - TilesCount)
-                    {
-                        //vertical
-                        separator.Add(new Point(actualRect.Right + PageMargin.Right, actualRect.Top));
-                        separator.Add(new Point(actualRect.Right + PageMargin.Right, actualRect.Bottom));
-                    }
-                    if ((pageIndex + 1) % TilesCount != 0)
+                    if (pageIndex % TilesCount != 0)
                     {
                         //horizontal
-                        separator.Add(new Point(actualRect.X, actualRect.Bottom + PageMargin.Bottom));
-                        separator.Add(new Point(actualRect.Right, actualRect.Bottom + PageMargin.Bottom));
+                        separator.Add(new Point(actualRect.X, actualRect.Top - PageMargin.Top));
+                        separator.Add(new Point(actualRect.Right, actualRect.Top - PageMargin.Top));
+                    }
+                    if (pageIndex >= TilesCount)
+                    {
+                        //vertical
+                        separator.Add(new Point(actualRect.Left - PageMargin.Left, actualRect.Top));
+                        separator.Add(new Point(actualRect.Left - PageMargin.Left, actualRect.Bottom));
                     }
                     break;
             }
@@ -2938,8 +2946,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             switch (ViewMode)
             {
                 case ViewModes.TilesLine:
+                case ViewModes.TilesLineRTL:
                 case ViewModes.TilesVertical:
-                    ret= CalcAppropriateSize(w, h, cSize.Width / TilesCount - Padding.Horizontal, cSize.Height - Padding.Vertical);
+                case ViewModes.TilesVerticalRTL:
+                    ret = CalcAppropriateSize(w, h, cSize.Width / TilesCount - Padding.Horizontal, cSize.Height - Padding.Vertical);
                     break;
                 case ViewModes.TilesHorizontal:
                     ret = CalcAppropriateSize(w, h, cSize.Width - Padding.Horizontal, cSize.Height / TilesCount - Padding.Vertical);
@@ -3020,6 +3030,19 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 var offset = loc.X - _renderRects[from].X;
                 for (int i = from; i < to; i++)
                     _renderRects[i].X += offset;
+            }
+        }
+
+        private void ApplyRTL(int i, int j)
+        {
+            if (!_enableRTL)
+                return;
+            j -= 1;
+            for (int k = 0; k <= (j - i) / 2; k++)
+            {
+                var tmp = _renderRects[i + k];
+                _renderRects[i + k] = _renderRects[j - k];
+                _renderRects[j - k] = tmp;
             }
         }
 
@@ -3252,6 +3275,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                         lowestPage = j;
                 }
                 AlignHorizontal(i, j);
+                ApplyRTL(i, j);
 
                 height = _renderRects[lowestPage].Bottom;
                 if (width < _renderRects[j - 1].Right)
@@ -3368,6 +3392,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 if (i % TilesCount == TilesCount - 1 || i == _renderRects.Length - 1)
                 {
                     AlignHorizontal(i - i % TilesCount, i + 1);
+                    ApplyRTL(i - i % TilesCount, i + 1);
                     ret = new SizeF(_renderRects[i].Right + Padding.Right, _renderRects[IdxWithLowestBottom(i - i % TilesCount, i)].Bottom + Padding.Bottom);
                 }
             }
@@ -3386,9 +3411,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     Document.Pages.CurrentIndex = index;
                     OnCurrentPageChanged(EventArgs.Empty);
 
-                    if (ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine)
+                    if (ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine || ViewMode == ViewModes.TilesLineRTL)
                         UpdateScrollBars(new SizeF(_renderRects[_endPage].Right + Padding.Right, _renderRects[IdxWithLowestBottom(_startPage, _endPage)].Bottom + Padding.Bottom));
-                    if ((ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine) && _startPage != prevStart)
+                    if ((ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine || ViewMode == ViewModes.TilesLineRTL) && _startPage != prevStart)
                         for (int i = prevStart; i <= prevEnd; i++)
                         {
                             if (PageAutoDispose && CanDisposePage(i))
@@ -3464,12 +3489,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     size = CalcHorizontal();
                     break;
                 case ViewModes.TilesVertical:
+                case ViewModes.TilesVerticalRTL:
                     size = CalcTilesVertical();
                     break;
                 case ViewModes.TilesHorizontal:
                     size = CalcTilesHorizontal();
                     break;
                 case ViewModes.TilesLine:
+                case ViewModes.TilesLineRTL:
                     size = CalcTilesLine();
                     AdjustFormScrollbars(true); //It's need to prevent the bug with scrollbar
                     break;
@@ -3763,7 +3790,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
         void Pages_CurrentPageChanged(object sender, EventArgs e)
         {
-            if (ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine)
+            if (ViewMode == ViewModes.SinglePage || ViewMode == ViewModes.TilesLine || ViewMode == ViewModes.TilesLineRTL)
             {
                 _prPages.ReleaseCanvas();
                 UpdateScrollBars(new SizeF(_renderRects[_endPage].Right + Padding.Right, _renderRects[IdxWithLowestBottom(_startPage, _endPage)].Bottom + Padding.Bottom));
