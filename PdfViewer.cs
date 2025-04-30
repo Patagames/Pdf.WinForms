@@ -663,7 +663,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                         _document.Pages.PageDeleted += Pages_PageDeleted;
                         _document.Pages.ProgressiveRender += Pages_ProgressiveRender;
                         if (Pdfium.IsFullAPI && _document.OpenDestination != null)
+                        {
                             _onstartPageIndex = _document.OpenDestination.PageIndex;
+                            if (_onstartPageIndex < 0) _onstartPageIndex = 0;
+                        }
                         SetCurrentPage(_onstartPageIndex);
                         if (_document.Pages.Count > 0)
                             if (_onstartPageIndex != 0)
@@ -3690,7 +3693,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         protected virtual void OnFormsDoGotoAction(DoGotoActionEventArgs e)
         {
             if (Document == null)
-                _onstartPageIndex = e.PageIndex;
+                _onstartPageIndex = e.PageIndex < 0 ? 0 : e.PageIndex;
             else
             {
                 SetCurrentPage(e.PageIndex);
