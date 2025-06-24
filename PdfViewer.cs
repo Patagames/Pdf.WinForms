@@ -2722,6 +2722,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     ScrollToPoint(pdfDestination.PageIndex, new PointF(left, top));
                     break;
             }
+            CalcAndSetCurrentPage();
             Invalidate();
         }
 
