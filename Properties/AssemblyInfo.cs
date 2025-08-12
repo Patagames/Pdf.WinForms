@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 //      Revision -.Net framework
 
 //---------------------------- WinForms Viewer -------------------------------------------------
-[assembly: AssemblyInformationalVersion("4.100.2704")]  //Should be equal to the same property of Patagames.Pdf assembly
+[assembly: AssemblyInformationalVersion("4.101.2704")]  //Should be equal to the same property of Patagames.Pdf assembly
 [assembly: AssemblyVersion("4.29.19." +
 #if DOTNET20
 "20"
