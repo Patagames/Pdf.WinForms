@@ -2236,7 +2236,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// <param name="e">A System.Windows.Forms.PreviewKeyDownEventArgs that contains the event data.</param>
         protected override void OnPreviewKeyDown(PreviewKeyDownEventArgs e)
         {
-            if (Document != null)
+            if (Document != null && Document.Pages.Count > 0)
             {
                 KeyboardModifiers mod = (KeyboardModifiers)0;
 
@@ -2259,7 +2259,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// <param name="e">A System.Windows.Forms.KeyEventArgs that contains the event data.</param>
         protected override void OnKeyUp(KeyEventArgs e)
         {
-            if (Document != null)
+            if (Document != null && Document.Pages.Count > 0)
             {
                 Document.Pages.CurrentPage.OnKeyUp((FWL_VKEYCODE)e.KeyValue, (KeyboardModifiers)e.Modifiers);
             }
