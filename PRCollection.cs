@@ -93,10 +93,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			else if (!useProgressiveRender)
 				this[page].status = ProgressiveStatus.Done + 3;
 
-            PdfBitmap bitmap = this[page].Bitmap;
-            bool ret = ProcessExisting(bitmap ?? CanvasBitmap, page, pageRect, pageRotate, renderFlags);
-            if (bitmap != null)
-                Pdfium.FPDFBitmap_CompositeBitmap(CanvasBitmap.Handle, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, bitmap.Handle, pageRect.X, pageRect.Y, BlendTypes.FXDIB_BLEND_NORMAL);
+
+			this[page].Bitmap?.Clear(0);
+            bool ret = ProcessExisting(this[page].Bitmap ?? CanvasBitmap, page, pageRect, pageRotate, renderFlags);
+            if (this[page].Bitmap != null)
+                Pdfium.FPDFBitmap_CompositeBitmap(CanvasBitmap.Handle, pageRect.X, pageRect.Y, pageRect.Width, pageRect.Height, this[page].Bitmap.Handle, pageRect.X, pageRect.Y, BlendTypes.FXDIB_BLEND_NORMAL);
             return ret;
 		}
 
