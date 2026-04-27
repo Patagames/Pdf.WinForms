@@ -22,13 +22,14 @@ namespace Patagames.Pdf.Net.Controls.WinForms
     public partial class PdfViewer : UserControl
     {
         #region Private fields
+        private const float _toleranceX = 10.0f;
+        private const float _toleranceY = 10.0f;
         private int _dpi = -1;
-        private SelectInfo _selectInfo = new SelectInfo() { StartPage = -1 };
+        private SelectInfo _selectInfo = SelectInfo.Empty;
         private SortedDictionary<int, List<HighlightInfo>> _highlightedText = new SortedDictionary<int, List<HighlightInfo>>();
         private bool __mousePressed = false;
         private bool _mousePressed { get =>__mousePressed && (Control.MouseButtons & MouseButtons.Left) != 0; set => __mousePressed = value; }
         private bool _mousePressedInLink = false;
-        private bool _isShowSelection = false;
         private int _onstartPageIndex = 0;
         private Point _panToolInitialScrollPosition;
         private Point _panToolInitialMousePosition;
@@ -101,6 +102,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         private PRCollection _prPages = new PRCollection();
         private Timer _invalidateTimer = null;
         private Font _loadingFont = new Font("Tahoma", 10);
+        private Timer _scrollForSelectTimer = null;
+        private Stopwatch _scrollTimer = new Stopwatch();
 
         private bool _skipOnResize = false;
         private bool _loadedByViewer = true;
@@ -584,6 +587,17 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
         #region Public properties
         /// <summary>
+        /// Gets a value indicating whether any text is currently selected.
+        /// </summary>
+        public bool IsTextSelected
+        {
+            get
+            {
+                return SelectInfo.IsAnySelected;
+            }
+        }
+
+        /// <summary>
         /// Gets or sets blend mode which is used in drawing of acro forms.
         /// </summary>
         /// <remarks>
@@ -646,7 +660,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                         _document.Pages.ProgressiveRender -= Pages_ProgressiveRender;
                     }
                     SetScrollExtent(0, 0);
-                    _selectInfo = new SelectInfo() { StartPage = -1 };
+                    _selectInfo = SelectInfo.Empty;
                     _highlightedText.Clear();
                     //_onstartPageIndex = 0;
                     _renderRects = null;
@@ -858,15 +872,16 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             {
                 if (Document == null)
                     return "";
-
-                var selTmp = NormalizeSelectionInfo();
-
-                if (selTmp.StartPage < 0 || selTmp.StartIndex < 0)
+                
+                var selTmp = SelectInfo;
+                if (!selTmp.IsAnySelected)
                     return "";
 
                 string ret = "";
                 for (int i = selTmp.StartPage; i <= selTmp.EndPage; i++)
                 {
+                    if (!selTmp.IsOnPageSelected(i))
+                        continue;
                     if (ret != "")
                         ret += "\r\n";
 
@@ -874,11 +889,17 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     if (i == selTmp.StartPage)
                         s = selTmp.StartIndex;
 
-                    int len = Document.Pages[i].Text.CountChars;
+                    int cnt = Document.Pages[i].Text.CountChars;
+                    int len = cnt;
                     if (i == selTmp.EndPage)
                         len = (selTmp.EndIndex + 1) - s;
+                    else if (i == selTmp.StartPage)
+                        len = cnt - s;
 
-                    ret += Document.Pages[i].Text.GetText(s, len);
+                    if (s < 0 || len <= 0 || s + len > cnt)
+                        ret += "";
+                    else
+                        ret += Document.Pages[i].Text.GetText(s, len);
                 }
                 return ret;
             }
@@ -887,7 +908,15 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// <summary>
         /// Gets information about selected text in a PdfView control
         /// </summary>
-        public SelectInfo SelectInfo { get { return NormalizeSelectionInfo(); } }
+        public SelectInfo SelectInfo 
+        { 
+            get 
+            {
+                var ret = _selectInfo;
+                ret.Normalize();
+                return ret;
+            } 
+        }
 
         /// <summary>
         /// Control how the PdfViewer will display pages
@@ -1340,7 +1369,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 EndPage = endPage,
                 EndIndex = endIndex,
             };
-            _isShowSelection = true;
             Invalidate();
             OnSelectionChanged(EventArgs.Empty);
         }
@@ -1350,10 +1378,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// </summary>
         public void DeselectText()
         {
-            _selectInfo = new SelectInfo()
-            {
-                StartPage = -1,
-            };
+            _selectInfo = SelectInfo.Empty;
             Invalidate();
             OnSelectionChanged(EventArgs.Empty);
         }
@@ -1543,11 +1568,13 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         public void HighlightSelectedText(Color color)
         {
             var selInfo = SelectInfo;
-            if (selInfo.StartPage < 0 || selInfo.StartIndex < 0)
+            if (!selInfo.IsAnySelected)
                 return;
 
             for (int i = selInfo.StartPage; i <= selInfo.EndPage; i++)
             {
+                if (!selInfo.IsOnPageSelected(i))
+                    continue;
                 int start = (i == selInfo.StartPage ? selInfo.StartIndex : 0);
                 int len = (i == selInfo.EndPage ? (selInfo.EndIndex+1) - start : -1);
                 HighlightText(i, start, len, color);
@@ -1623,7 +1650,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// <remarks>The rectangles are given in the user control coordinate system.</remarks>
         public List<Rectangle> GetSelectedRects(int pageIndex)
         {
-            return GetSelectedRects(pageIndex, SelectInfo);
+            return GetSelectedRects(pageIndex, _selectInfo);
         }
 
         /// <summary>
@@ -1635,6 +1662,10 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// <remarks>The rectangles are given in the user control coordinate system.</remarks>
         public List<Rectangle> GetSelectedRects(int pageIndex, SelectInfo selInfo)
         {
+            if (!selInfo.IsOnPageSelected(pageIndex))
+                return new List<Rectangle>();
+
+            selInfo.Normalize();
             if (pageIndex >= selInfo.StartPage && pageIndex <= selInfo.EndPage)
             {
                 int cnt = Document.Pages[pageIndex].Text.CountChars;
@@ -1645,6 +1676,8 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 int len = cnt;
                 if (pageIndex == selInfo.EndPage)
                     len = (selInfo.EndIndex + 1) - s;
+                else if (pageIndex == selInfo.StartPage)
+                    len = cnt - s;
 
                 int s2 = s + len;
                 int len2 = cnt - s2;
@@ -1951,7 +1984,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             if (Document != null && _renderRects != null)
             {
                 //Normalize info about text selection
-                SelectInfo selTmp = NormalizeSelectionInfo();
+                SelectInfo selTmp = SelectInfo;
 
                 //For store coordinates of pages separators
                 var separator = new List<Point>();
@@ -2143,9 +2176,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                             case MouseModes.Default:
                                 ProcessMouseDownDefaultTool(page_point, idx);
                                 ProcessMouseDownForSelectTextTool(page_point, idx);
+                                ProcessMouseDownForScrollTool();
                                 break;
                             case MouseModes.SelectTextTool:
                                 ProcessMouseDownForSelectTextTool(page_point, idx);
+                                ProcessMouseDownForScrollTool();
                                 break;
                             case MouseModes.PanTool:
                                 ProcessMouseDownPanTool(e.Location);
@@ -2183,9 +2218,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                                 cursor = cursor2;
                             else
                                 cursor = cursor == CursorTypes.Arrow ? cursor2 : cursor;
+                            ProcessMouseMoveForScrollTool(e.Location);
                             break;
                         case MouseModes.SelectTextTool:
                             cursor = ProcessMouseMoveForSelectTextTool(page_point, idx);
+                            ProcessMouseMoveForScrollTool(e.Location);
                             break;
                         case MouseModes.PanTool:
                             cursor = ProcessMouseMoveForPanTool(e.Location);
@@ -2208,7 +2245,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             _mousePressed = false;
             if (Document != null)
             {
-                if (_selectInfo.StartPage >= 0)
+                if (_selectInfo.IsAnySelected)
                     OnSelectionChanged(EventArgs.Empty);
 
                 PointF page_point;
@@ -2222,12 +2259,38 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     {
                         case MouseModes.Default:
                             ProcessMouseUpForDefaultTool(page_point, idx);
+                            ProcessMouseUpForScrollTool();
+                            break;
+                        case MouseModes.SelectTextTool:
+                            ProcessMouseUpForScrollTool();
                             break;
                     }
                 }
             }
 
             base.OnMouseUp(e);
+        }
+
+        /// <summary>
+        /// Raises the <see cref="E:System.Windows.Forms.Control.MouseCaptureChanged"/> event and synchronizes the cursor state.
+        /// </summary>
+        /// <param name="e">An <see cref="T:System.EventArgs"/> that contains the event data.</param>
+        /// <remarks>
+        /// This override implements a workaround to ensure the visual cursor is correctly updated when mouse capture is released. 
+        /// By setting <see cref="P:System.Windows.Forms.Cursor.Current"/> to <see langword="null"/> when <see cref="P:System.Windows.Forms.Control.Capture"/> 
+        /// is <see langword="false"/>, the internal cursor cache is invalidated. This forces the operating system to re-evaluate 
+        /// and redraw the cursor icon based on the current <see cref="P:System.Windows.Forms.Control.Cursor"/> property settings.
+        /// </remarks>
+        protected override void OnMouseCaptureChanged(EventArgs e)
+        {
+            base.OnMouseCaptureChanged(e);
+
+            if (Capture == false)
+            {
+                var tmp = Cursor.Current;
+                Cursor.Current = null;
+                Cursor.Current = tmp;
+            }
         }
 
         /// <summary>
@@ -2384,7 +2447,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         /// </remarks>
         protected virtual void DrawTextSelection(PdfBitmap bitmap, SelectInfo selInfo, int pageIndex)
         {
-            if (selInfo.StartPage < 0 || !_isShowSelection)
+            if (!selInfo.IsAnySelected)
                 return;
             if (pageIndex >= selInfo.StartPage && pageIndex <= selInfo.EndPage)
             {
@@ -2550,11 +2613,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         {
             if (_highlightedText.ContainsKey(i))
                 return false;
-            if (_selectInfo.StartPage < 0 || _selectInfo.EndPage < 0 || _selectInfo.StartIndex < 0 || _selectInfo.EndIndex < 0)
-                return true;
-            if (_selectInfo.StartPage >= i && _selectInfo.EndPage <= i)
+            var selTmp = SelectInfo;
+            if (selTmp.IsOnPageSelected(i))
                 return false;
-
             return true;
         }
 
@@ -3103,35 +3164,6 @@ namespace Patagames.Pdf.Net.Controls.WinForms
             if (rot < 0)
                 rot = 4 + rot;
             return  (PageRotate)rot;
-        }
-
-        private SelectInfo NormalizeSelectionInfo()
-        {
-            var selTmp = _selectInfo;
-            if (selTmp.StartPage >= 0 && selTmp.EndPage >= 0)
-            {
-                if (selTmp.StartPage > selTmp.EndPage)
-                {
-                    selTmp = new SelectInfo()
-                    {
-                        StartPage = selTmp.EndPage,
-                        EndPage = selTmp.StartPage,
-                        StartIndex = selTmp.EndIndex,
-                        EndIndex = selTmp.StartIndex
-                    };
-                }
-                else if ((selTmp.StartPage == selTmp.EndPage) && (selTmp.StartIndex > selTmp.EndIndex))
-                {
-                    selTmp = new SelectInfo()
-                    {
-                        StartPage = selTmp.StartPage,
-                        EndPage = selTmp.EndPage,
-                        StartIndex = selTmp.EndIndex,
-                        EndIndex = selTmp.StartIndex
-                    };
-                }
-            }
-            return selTmp;
         }
 
         private List<Rectangle> NormalizeRects(IEnumerable<FS_RECTF> rects, int pageIndex, IEnumerable<FS_RECTF> rectsBefore, IEnumerable<FS_RECTF> rectsAfter)
@@ -3819,10 +3851,9 @@ namespace Patagames.Pdf.Net.Controls.WinForms
         private void ProcessMouseDoubleClickForSelectTextTool(PointF page_point, int page_index)
         {
             var page = Document.Pages[page_index];
-            //page.OnLButtonDown(0, page_point.X, page_point.Y);
 
             int si, ei;
-            int ci = page.Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f);
+            int ci = page.Text.GetCharIndexAtPos(page_point.X, page_point.Y, _toleranceX, _toleranceY);
             if (GetWord(page.Text, ci, out si, out ei))
             {
                 _selectInfo = new SelectInfo()
@@ -3832,8 +3863,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                     StartIndex = si,
                     EndIndex = ei,
                 };
-                _isShowSelection = true;
-                if (_selectInfo.StartPage >= 0)
+                if (_selectInfo.IsAnySelected)
                     OnSelectionChanged(EventArgs.Empty);
                 Invalidate();
             }
@@ -3841,41 +3871,44 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 
         private void ProcessMouseDownForSelectTextTool(PointF page_point, int page_index)
         {
+            var text = Document.Pages[page_index].Text;
+            Pdfium.FPDFText_GetTextGapAtPoint(text.Handle, page_point.X, page_point.Y, true, _toleranceX, _toleranceY, out int prevIdx, out int nextIdx);
+            bool hasSelection = _selectInfo.IsAnySelected;
             _selectInfo = new SelectInfo()
             {
                 StartPage = page_index,
                 EndPage = page_index,
-                StartIndex = Document.Pages[page_index].Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f),
-                EndIndex = -1// Document.Pages[page_index].Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f),
+                StartIndex = prevIdx >= 0 && prevIdx == nextIdx ? prevIdx : -1,
+                EndIndex = -1,
+                Before = prevIdx,
+                After = nextIdx,
+                PagePoint = new FS_POINTF(page_point.X, page_point.Y)
             };
-            _isShowSelection = false;
-            if (_selectInfo.StartPage >= 0)
+            if (hasSelection)
                 OnSelectionChanged(EventArgs.Empty);
         }
 
         private CursorTypes ProcessMouseMoveForSelectTextTool(PointF page_point, int page_index)
         {
-            int character_index = Document.Pages[page_index].Text.GetCharIndexAtPos(page_point.X, page_point.Y, 10.0f, 10.0f);
-
+            CalcSelectIndicies(page_point, page_index, _selectInfo, out int from, out int to, out bool bExact);
             if (_mousePressed)
             {
-                if (character_index >= 0)
+                _selectInfo = new SelectInfo()
                 {
-                    _selectInfo = new SelectInfo()
-                    {
-                        StartPage = _selectInfo.StartPage,
-                        EndPage = page_index,
-                        EndIndex = character_index,
-                        StartIndex = _selectInfo.StartIndex,
-                    };
-                    _mousePressedInLink = false;
-                    _isShowSelection = true;
-                }
+                    StartPage = _selectInfo.StartPage,
+                    EndPage = page_index,
+                    StartIndex = from,
+                    EndIndex = to,
+                    Before = _selectInfo.Before,
+                    After = _selectInfo.After,
+                    PagePoint = _selectInfo.PagePoint
+                };
+                _mousePressedInLink = false;
                 Invalidate();
             }
 
             if (!Document.Pages[page_index].OnMouseMove(0, page_point.X, page_point.Y))
-                if (character_index >= 0)
+                if (bExact)
                     return CursorTypes.VBeam;
             var formFieldType = Document.FormFill!= null ? Document.Pages[page_index].GetFormFieldAtPoint(page_point.X, page_point.Y) : FormFieldTypes.FPDF_FORMFIELD_NOFIELDS;
             switch (formFieldType)
@@ -3888,6 +3921,88 @@ namespace Patagames.Pdf.Net.Controls.WinForms
                 case FormFieldTypes.FPDF_FORMFIELD_TEXTFIELD: return CursorTypes.VBeam;
             }
             return CursorTypes.Arrow;
+        }
+
+        private void CalcSelectIndicies(PointF page_point, int page_index, SelectInfo si, out int from, out int to, out bool bExact)
+        {
+            var text = Document.Pages[page_index].Text;
+            Pdfium.FPDFText_GetTextGapAtPoint(text.Handle, page_point.X, page_point.Y, true, _toleranceX, _toleranceY, out int prevIdx, out int nextIdx);
+
+            var rcPrev = prevIdx >= 0 ? text.GetCharBox(prevIdx) : default;
+            var rcNext = nextIdx >= 0 ? text.GetCharBox(nextIdx) : default;
+            bExact = prevIdx >= 0 && prevIdx == nextIdx;
+            bool isOutsideTolerance = Math.Abs(page_point.X - si.PagePoint.X) > rcPrev.Width / 2 || Math.Abs(page_point.Y - si.PagePoint.Y) > rcPrev.Height / 2;
+            from = si.StartIndex;
+            to = bExact && isOutsideTolerance ? prevIdx : si.EndIndex;
+            if (bExact)
+                return;
+
+            if (_mousePressed)
+            {
+                bool isUp = page_index == si.StartPage
+                    ? (page_point.Y > si.PagePoint.Y)
+                    : (si.StartPage > page_index);
+                from = (page_index == si.StartPage) ? (isUp ? si.Before : si.After) : from;
+                int charIdx = isUp ? nextIdx : prevIdx;
+                bool bEquator = isUp == (charIdx > from);
+                to = (page_index == si.StartPage && bEquator) ? -1 : charIdx;
+            }
+        }
+        #endregion
+
+        #region Scroll on select text tool
+        private void ProcessMouseDownForScrollTool()
+        {
+            _scrollTimer.Reset();
+            _scrollTimer.Start();
+        }
+
+        private void ProcessMouseMoveForScrollTool(Point mouse_point)
+        {
+            if (_mousePressed)
+            {
+                double dt = _scrollTimer.Elapsed.TotalMilliseconds;
+                var offsetX = (int)CalcScrollSpeed(mouse_point.X, ClientSize.Width, dt);
+                var offsetY = (int)CalcScrollSpeed(mouse_point.Y, ClientSize.Height, dt);
+                _scrollTimer.Reset();
+                _scrollTimer.Start();
+                if (offsetX != 0 || offsetY != 0)
+                {
+                    if (_scrollForSelectTimer == null)
+                    {
+                        _scrollForSelectTimer = new Timer() { Interval = 10 };
+                        _scrollForSelectTimer.Tick += (s, e) =>
+                        {
+                            _scrollForSelectTimer.Stop();
+                            ProcessMouseMoveForScrollTool(PointToClient(Control.MousePosition));
+                        };
+                    }
+                    ProcessMouseDownPanTool(mouse_point);
+                    ProcessMouseMoveForPanTool(new Point(mouse_point.X - offsetX, mouse_point.Y - offsetY));
+                    int idx = DeviceToPage(mouse_point.X, mouse_point.Y, out PointF pp);
+                    if (idx > 0)
+                        ProcessMouseMoveForSelectTextTool(pp, idx);
+                    CalcAndSetCurrentPage();
+                    _scrollForSelectTimer.Start();
+                }
+            }
+        }
+
+        private void ProcessMouseUpForScrollTool()
+        {
+            _scrollTimer.Stop();
+        }
+
+        private int CalcScrollSpeed(int mousePos, int edge, double deltaTime, double maxPixelsPerSecond = 10000, double minPixelsPerSecond=100, double maxDistance = 200, double exponent = 2)
+        {
+            double distanceFromEdge = mousePos < 0 ? -mousePos : mousePos - edge;
+            if (distanceFromEdge < 0)
+                return 0;
+            double ratio = Math.Min(distanceFromEdge / maxDistance, 1);
+            double speedMultiplier = Math.Pow(ratio, 2);
+            double dt = deltaTime / 1000.0;
+            double velocity = Math.Pow(ratio, exponent) * maxPixelsPerSecond * dt  + (minPixelsPerSecond * dt);
+            return (int)Math.Round(velocity * (mousePos < 0 ? -1 : 1));
         }
         #endregion
 

@@ -47,7 +47,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
 
 			var tsb = this.Items["btnCopy"] as ToolStripButton;
 			if (tsb != null)
-				tsb.Enabled = PdfViewer.SelectedText.Length > 0;
+				tsb.Enabled = PdfViewer.IsTextSelected;
 
 
 		}
