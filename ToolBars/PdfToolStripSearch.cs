@@ -124,11 +124,11 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
         }
     #endregion
 
-    #region Overriding
-    /// <summary>
-    /// Create all buttons and add its into toolbar. Override this method to create custom buttons
-    /// </summary>
-    protected override void InitializeButtons()
+        #region Overriding
+        /// <summary>
+        /// Create all buttons and add its into toolbar. Override this method to create custom buttons
+        /// </summary>
+        protected override void InitializeButtons()
         {
             var btn = new ToolStripSearchBar();
             btn.Name = "btnSearchBar";
@@ -333,7 +333,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms.ToolBars
                 return;
             }
 
-            IntPtr text = Pdfium.FPDFText_LoadPage(page);
+            IntPtr text = Pdfium.FPDFText_LoadPageEx(page, PdfText.AdvanceTextExtraction);
             if (text == IntPtr.Zero)
             {
                 _searchTimer.Stop();
