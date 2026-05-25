@@ -10,6 +10,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 	/// </summary>
 	public partial class BookmarksViewer : TreeView
 	{
+		private const string TreeNodeLoadingKey = "{C5C14465-60FB-448D-A3BD-8F5E855C081D}";
 
 		#region Private fields
 		private PdfViewer _pdfViewer = null;
@@ -106,7 +107,7 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 		/// <param name="e"></param>
 		protected override void OnBeforeExpand(TreeViewCancelEventArgs e)
 		{
-			if (e.Node.Nodes.Count == 1 && e.Node.Nodes.ContainsKey("{C5C14465-60FB-448D-A3BD-8F5E855C081D}"))
+			if (e.Node.Nodes.Count == 1 && e.Node.Nodes.ContainsKey(TreeNodeLoadingKey))
 			{
 				e.Node.Nodes.Clear();
 				BuildTree(e.Node.Nodes, (e.Node as BookmarksViewerNode).Bookmark.Childs);
@@ -161,16 +162,18 @@ namespace Patagames.Pdf.Net.Controls.WinForms
 			if (bookmarks == null)
 				return;
 
+			var nodeList = new List<TreeNode>();
 			foreach (var b in bookmarks)
 			{
 				if (_processed.ContainsKey(b.Handle))
 					continue;
 				_processed.Add(b.Handle, 1);
 				var node = new BookmarksViewerNode(b);
-				nodes.Add(node);
 				if (b.Childs != null && b.Childs.Count > 0)
-					node.Nodes.Add("{C5C14465-60FB-448D-A3BD-8F5E855C081D}", "Loading...");
+					node.Nodes.Add(TreeNodeLoadingKey, "Loading...");
+				nodeList.Add(node);
 			}
+			nodes.AddRange(nodeList.ToArray());
 		}
 		#endregion
 
